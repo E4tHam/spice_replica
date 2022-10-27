@@ -1,0 +1,11 @@
+
+IDD 2 0 DC 1
+R1  2 1 1
+R2  1 0 1
+
+.DC
+.PRINTNV 1 2
+
+* node 2 should be 2
+* node 1 should be 1
+* node 0 should be 0

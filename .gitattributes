@@ -1,0 +1,3 @@
+
+*.m     linguist-language=MATLAB
+*.ckt   linguist-language=spice     # not supported :(
