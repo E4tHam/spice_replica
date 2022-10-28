@@ -1,6 +1,6 @@
-* a RC mesh circuits with two voltage inputs 
-Vin1 1 0 PWL 0 3.0e-10 2.0 2e-9 2.0 2.3e-9 0 
-Vin2 380 0 PWL 0 8.0e-10 2.0 2.5e-9 2.0 2.8e-9 0 
+* a RC mesh circuits with two voltage inputs
+Vin1 1 0 PWL 0 3.0e-10 2.0 2e-9 2.0 2.3e-9 0
+Vin2 380 0 PWL 0 8.0e-10 2.0 2.5e-9 2.0 2.8e-9 0
 I0 0 1 dc -0.00185414
 R0 1 2 23.7475
 I1 0 2 dc -0.00148186

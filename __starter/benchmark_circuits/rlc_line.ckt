@@ -1,5 +1,5 @@
 * a simple RLC line ckt
-Vin 1 0 PWL 0 5.0e-10 2.0 2e-9 2.0 2.5e-9 0 
+Vin 1 0 PWL 0 5.0e-10 2.0 2e-9 2.0 2.5e-9 0
 R_1 1 2 10
 L_1 2 3 2e-010
 C_1 3 0 1e-013
@@ -62,4 +62,4 @@ C_19 39 0 1e-013
 .PLOTNV 10
 .PLOTNV 20
 .PLOTNV 39
-.end 
+.end
