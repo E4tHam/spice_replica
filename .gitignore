@@ -1,2 +1,4 @@
 
 circuits_json
+*.o
+main
