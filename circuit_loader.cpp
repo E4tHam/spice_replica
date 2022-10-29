@@ -51,8 +51,16 @@ void circuit_loader::circuit_from_filename(circuit * c, const std::string & file
         }
         circuit::node *Node2 = (node2_id==circuit::gnd->id) ? circuit::gnd : c->nodes[node2_id];
 
-
+        // Parse e_array into new element
         switch (ElemType) {
+            case circuit::linelem::R:
+                e = new circuit::resistor(
+                    ElemType,
+                    Node1,
+                    Node2,
+                    (double)e_array.at(1)
+                );
+                break;
             case circuit::linelem::C:
                 e = new circuit::capacitor(
                     ElemType,
@@ -108,14 +116,6 @@ void circuit_loader::circuit_from_filename(circuit * c, const std::string & file
                         exit(1);
                         break;
                 }
-                break;
-            case circuit::linelem::R:
-                e = new circuit::resistor(
-                    ElemType,
-                    Node1,
-                    Node2,
-                    (double)e_array.at(1)
-                );
                 break;
             default:
                 cerr << "cl Unknown ElemType: " << ElemType << endl;

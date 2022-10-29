@@ -3,6 +3,6 @@
 
 int main(int argc, char const *argv[]) {
     circuit a{argv[1]};
-    // a.print();
+    a.print();
     return 0;
 }
