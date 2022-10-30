@@ -12,5 +12,6 @@ int main(int argc, char const *argv[]) {
         a.step();
         a.print();
     }
+    a.to_json("out.json");
     return 0;
 }

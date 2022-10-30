@@ -1,6 +1,6 @@
 
-#include "circuit_loader.h"
-#include "json.hpp"
+#include "circuit_interface.h"
+#include <nlohmann/json.hpp>
 #include <iostream>
 #include <fstream>
 
@@ -8,7 +8,7 @@ using namespace std;
 using namespace nlohmann;
 
 // set c->nodes and c->linelems
-void circuit_loader::circuit_from_filename(circuit * c, const std::string & filename) {
+void circuit_interface::circuit_from_filename(circuit * c, const std::string & filename) {
     ifstream ifs(filename);
     auto j = json::parse( ifs );
     ifs.close();
@@ -172,4 +172,15 @@ void circuit_loader::circuit_from_filename(circuit * c, const std::string & file
 
         c->linelems.push_back(e);
     }
+}
+
+
+
+
+
+void circuit_interface::export_circuit(const circuit * const c, const std::string & filename) {
+    json j = {
+        {"time_step",c->time_step}
+    };
+    cout << j << endl;
 }

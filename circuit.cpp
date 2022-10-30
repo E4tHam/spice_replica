@@ -1,6 +1,6 @@
 
 #include "circuit.h"
-#include "circuit_loader.h"
+#include "circuit_interface.h"
 #include <iostream>
 
 using namespace std;
@@ -25,7 +25,7 @@ circuit::circuit() { }
 circuit::circuit(const std::string & filename) {
 
     // initialize this->nodes and this->linelems
-    circuit_loader::circuit_from_filename(this, filename);
+    circuit_interface::circuit_from_filename(this, filename);
 
     // init time
     step_num = 0;
@@ -415,4 +415,8 @@ void circuit::V_source::print() const {
 }
 void circuit::I_source::print() const {
     cout << name << " n" << Node1->name << " n" << Node2->name << " I=" << current() << " I=" << current() << endl;
+}
+
+void circuit::to_json(const std::string & filename) const {
+    circuit_interface::export_circuit(this, filename);
 }

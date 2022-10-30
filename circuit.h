@@ -132,6 +132,7 @@ public:
     void step();
 
     void print() const;
+    void to_json(const std::string & filename) const;
     size_t step_num;
 
 private:
@@ -149,7 +150,7 @@ private:
     size_t n, m;
 
     // friends
-    friend class circuit_loader;
+    friend class circuit_interface;
     friend class linelem;
 };
 
