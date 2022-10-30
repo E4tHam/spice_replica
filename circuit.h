@@ -101,21 +101,21 @@ public:
             : power_source(c, ElemType, name, Node1, Node2, SOURCE_TYPE) { }
         void print() const;
     };
-    struct I_dc : power_source {
+    struct I_dc : I_source {
         double current(const int & t = -1) const;
         double current_value;
         I_dc(circuit & c, ElemType_t ElemType, std::string name, node *Node1, node *Node2, TYPE_t SOURCE_TYPE, double current_value)
-            : power_source(c, ElemType, name, Node1, Node2, SOURCE_TYPE), current_value(current_value) { }
+            : I_source(c, ElemType, name, Node1, Node2, SOURCE_TYPE), current_value(current_value) { }
     };
-    struct I_pwl : power_source {
+    struct I_pwl : I_source {
         double current(const int & t = -1) const;
         typedef std::vector< std::pair<double, double> > currents_t;
         currents_t currents;
         I_pwl(circuit & c, ElemType_t ElemType, std::string name, node *Node1, node *Node2, TYPE_t SOURCE_TYPE, currents_t currents)
-            : power_source(c, ElemType, name, Node1, Node2, SOURCE_TYPE), currents(currents) { }
+            : I_source(c, ElemType, name, Node1, Node2, SOURCE_TYPE), currents(currents) { }
     };
-    // struct V_pwl : power_source { };
-    // struct I_pwl : power_source { };
+    // struct V_pwl : V_source { };
+    // struct I_pwl : I_source { };
 
 
     // static variables
