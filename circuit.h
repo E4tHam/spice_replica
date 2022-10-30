@@ -27,12 +27,14 @@ public:
         node *Node1, *Node2;
         linelem(ElemType_t ElemType, node *Node1, node *Node2)
             : ElemType(ElemType), Node1(Node1), Node2(Node2) { }
+        double voltage(const int & t = -1) const;
         virtual void print() const;
     };
     struct resistor : linelem {
         double resistance;
         resistor(ElemType_t ElemType, node *Node1, node *Node2, double resistance)
             : linelem(ElemType, Node1, Node2), resistance(resistance) { }
+        double current(const int & t = -1) const;
         void print() const;
     };
     struct capacitor : linelem {
@@ -40,6 +42,7 @@ public:
         std::vector<double> currents;
         capacitor(ElemType_t ElemType, node *Node1, node *Node2, double capacitance, double initial_voltage)
             : linelem(ElemType, Node1, Node2), capacitance(capacitance), initial_voltage(initial_voltage) { }
+        double conductance() const;
         void print() const;
     };
     struct inductor : linelem {
@@ -47,6 +50,7 @@ public:
         std::vector<double> currents;
         inductor(ElemType_t ElemType, node *Node1, node *Node2, double inductance, double initial_current)
             : linelem(ElemType, Node1, Node2), inductance(inductance), initial_current(initial_current) { }
+        double conductance() const;
         void print() const;
     };
     struct power_source : linelem {
@@ -88,9 +92,14 @@ public:
     circuit(const std::string & filename);
     ~circuit();
 
+    void step();
+
     void print() const;
 
 private:
+    // helper functions
+    void solve(); // use A and z to find currents and voltages
+
     // time
     double time;
 
@@ -100,7 +109,6 @@ private:
 
     // matrix model
     Eigen::MatrixXd A;
-    Eigen::Matrix <double, Eigen::Dynamic, 1> z;
     size_t n, m;
 
     // friends
