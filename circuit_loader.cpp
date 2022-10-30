@@ -14,12 +14,19 @@ void circuit_loader::circuit_from_filename(circuit * c, const std::string & file
     ifs.close();
     const auto LINELEM = j.at("LINELEM");
     const auto NODES = j.at("NODES");
+    const auto LINNAME = j.at("LINNAME");
+    size_t e_name_i = 0;
     for (const auto & e_array : LINELEM) {
 
         circuit::linelem * e;
 
         // set ElemType
         auto ElemType = (circuit::linelem::ElemType_t)e_array.at(0);
+
+        // set name
+        string name = "";
+        for (auto x : LINNAME.at(e_name_i)) name += (char)(int)x;
+        e_name_i++;
 
         // set nodes (If node doesn't exist, add it to c->nodes)
         int node1_id = (int)e_array.at(2);
@@ -57,6 +64,7 @@ void circuit_loader::circuit_from_filename(circuit * c, const std::string & file
                 e = new circuit::resistor(
                     *c,
                     ElemType,
+                    name,
                     Node1,
                     Node2,
                     (double)e_array.at(1)
@@ -69,6 +77,7 @@ void circuit_loader::circuit_from_filename(circuit * c, const std::string & file
                 e = new circuit::capacitor(
                     *c,
                     ElemType,
+                    name,
                     Node1,
                     Node2,
                     (double)e_array.at(1),
@@ -82,6 +91,7 @@ void circuit_loader::circuit_from_filename(circuit * c, const std::string & file
                 e = new circuit::inductor(
                     *c,
                     ElemType,
+                    name,
                     Node1,
                     Node2,
                     (double)e_array.at(1),
@@ -94,6 +104,7 @@ void circuit_loader::circuit_from_filename(circuit * c, const std::string & file
                         e = new circuit::V_dc(
                             *c,
                             ElemType,
+                            name,
                             Node1,
                             Node2,
                             (circuit::power_source::TYPE_t)e_array.at(4),
@@ -107,6 +118,7 @@ void circuit_loader::circuit_from_filename(circuit * c, const std::string & file
                         e = new circuit::V_pwl(
                             *c,
                             ElemType,
+                            name,
                             Node1,
                             Node2,
                             (circuit::power_source::TYPE_t)e_array.at(4),
@@ -125,6 +137,7 @@ void circuit_loader::circuit_from_filename(circuit * c, const std::string & file
                         e = new circuit::I_dc(
                             *c,
                             ElemType,
+                            name,
                             Node1,
                             Node2,
                             (circuit::power_source::TYPE_t)e_array.at(4),
@@ -138,6 +151,7 @@ void circuit_loader::circuit_from_filename(circuit * c, const std::string & file
                         e = new circuit::I_pwl(
                             *c,
                             ElemType,
+                            name,
                             Node1,
                             Node2,
                             (circuit::power_source::TYPE_t)e_array.at(4),

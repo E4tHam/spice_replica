@@ -396,23 +396,23 @@ void circuit::node::print() const {
 }
 
 void circuit::linelem::print() const {
-    cout << "le" << ElemType << " n" << Node1->name << " n" << Node2->name << " V=" << voltage() << endl;
+    cout << name << " n" << Node1->name << " n" << Node2->name << " V=" << voltage() << endl;
 }
 void circuit::resistor::print() const {
-    cout << "R n" << Node1->name << " n" << Node2->name << " R=" << resistance << " I=" << current() << " V=" << voltage() << endl;
+    cout << name << " n" << Node1->name << " n" << Node2->name << " R=" << resistance << " I=" << current() << " V=" << voltage() << endl;
 }
 void circuit::capacitor::print() const {
-    cout << "C n" << Node1->name << " n" << Node2->name << " C=" << capacitance << " V_i=" << initial_voltage << " I=" << current() << " V=" << voltage() << endl;
+    cout << name << " n" << Node1->name << " n" << Node2->name << " C=" << capacitance << " V_i=" << initial_voltage << " I=" << current() << " V=" << voltage() << endl;
 }
 void circuit::inductor::print() const {
-    cout << "L n" << Node1->name << " n" << Node2->name << " L=" << inductance << " I_i=" << initial_current << " I=" << current() << " V=" << voltage() << endl;
+    cout << name << " n" << Node1->name << " n" << Node2->name << " L=" << inductance << " I_i=" << initial_current << " I=" << current() << " V=" << voltage() << endl;
 }
 void circuit::power_source::print() const {
-    cout << "power" << SOURCE_TYPE << " n" << Node1->name << " n" << Node2->name << " V=" << voltage() << endl;
+    cout << name << " n" << Node1->name << " n" << Node2->name << " V=" << voltage() << endl;
 }
 void circuit::V_source::print() const {
-    cout << "V_source n" << Node1->name << " n" << Node2->name << " V=" << voltage() << " I=" << current() << endl;
+    cout << name << " n" << Node1->name << " n" << Node2->name << " V=" << voltage() << " I=" << current() << endl;
 }
 void circuit::I_source::print() const {
-    cout << "I_source n" << Node1->name << " n" << Node2->name << " I=" << current() << " I=" << current() << endl;
+    cout << name << " n" << Node1->name << " n" << Node2->name << " I=" << current() << " I=" << current() << endl;
 }
