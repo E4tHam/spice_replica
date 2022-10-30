@@ -11,7 +11,7 @@ using namespace std;
 circuit::node GND_INSTANCE(-1, 0, -1);
 circuit::node * const circuit::gnd = &GND_INSTANCE;
 
-const double circuit::time_step = 0.1;
+const double circuit::time_step = 0.0000000001;
 
 
 
@@ -113,12 +113,12 @@ circuit::circuit(const std::string & filename) {
     z = Eigen::MatrixXd(n+m, 1);
     z << I, E;
     x = A.completeOrthogonalDecomposition().solve(z);
-    cout << A << endl << x << endl << z << endl;
+    // cout << A << endl << x << endl << z << endl;
 
     // record initial voltages
     for (auto node_i : nodes) {
         node_i.second->voltages.push_back( x(node_i.second->i,0 ) );
-        cout << node_i.second->name << " voltage is " << x(node_i.second->i,0 ) << endl;
+        // cout << node_i.second->name << " voltage is " << x(node_i.second->i,0 ) << endl;
     }
 
     // record initial currents
@@ -214,11 +214,11 @@ circuit::circuit(const std::string & filename) {
     z = Eigen::MatrixXd(n+m, 1);
     z << I, E;
 
-    // verify
-    x = A.completeOrthogonalDecomposition().solve(z);
-    cout << A << endl << x << endl << z << endl;
-    for (auto node_i : nodes)
-        cout << node_i.second->name << " voltage is " << x(node_i.second->i,0 ) << endl;
+    // // verify
+    // x = A.completeOrthogonalDecomposition().solve(z);
+    // cout << A << endl << x << endl << z << endl;
+    // for (auto node_i : nodes)
+    //     cout << node_i.second->name << " voltage is " << x(node_i.second->i,0 ) << endl;
 
     // print();
     // exit(0);
@@ -358,19 +358,27 @@ double circuit::V_source::current(const int & t) const {
 double circuit::V_dc::voltage(const int & t) const {
     return voltage_value;
 }
-double interpolate(double x, vector< pair<double,double> > v) {
-    return 0.0; // to do
+double pwl_value(double x, vector< pair<double,double> > v) {
+    if (x < 0)
+        return v.front().second;
+    if (x > v.back().first)
+        return v.back().second;
+    for (size_t i = 1; i < v.size(); i++) {
+        if (x < v.at(i).first)
+            return v.at(i-1).second;
+    }
+    return v.at(0).second;
 }
 double circuit::V_pwl::voltage(const int & t) const {
     double time = (double)((t<0)?(c.step_num+1+t):(t)) * time_step;
-    return interpolate(time, voltages);
+    return pwl_value(time, voltages);
 }
 double circuit::I_dc::current(const int & t) const {
     return current_value;
 }
 double circuit::I_pwl::current(const int & t) const {
     double time = (double)((t<0)?(c.step_num+1+t):(t)) * time_step;
-    return interpolate(time, currents);
+    return pwl_value(time, currents);
 }
 
 

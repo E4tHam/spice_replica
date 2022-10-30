@@ -110,7 +110,7 @@ public:
         double current(const int & t = -1) const;
         typedef std::vector< std::pair<double, double> > currents_t;
         currents_t currents;
-        I_pwl(circuit & c, ElemType_t ElemType, node *Node1, node *Node2, TYPE_t SOURCE_TYPE, double currents)
+        I_pwl(circuit & c, ElemType_t ElemType, node *Node1, node *Node2, TYPE_t SOURCE_TYPE, currents_t currents)
             : power_source(c, ElemType, Node1, Node2, SOURCE_TYPE), currents(currents) { }
     };
     // struct V_pwl : power_source { };

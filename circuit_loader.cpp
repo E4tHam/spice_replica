@@ -62,29 +62,35 @@ void circuit_loader::circuit_from_filename(circuit * c, const std::string & file
                     (double)e_array.at(1)
                 );
                 break;
-            case circuit::linelem::C:
+            case circuit::linelem::C: {
+                double initial_voltage = 0.0;
+                try {initial_voltage = (double)e_array.at(4);}
+                catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { }
                 e = new circuit::capacitor(
                     *c,
                     ElemType,
                     Node1,
                     Node2,
                     (double)e_array.at(1),
-                    (double)e_array.at(4)
+                    initial_voltage
                 );
-                break;
-            case circuit::linelem::L:
+                } break;
+            case circuit::linelem::L: {
+                double initial_current = 0.0;
+                try {initial_current = (double)e_array.at(4);}
+                catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { }
                 e = new circuit::inductor(
                     *c,
                     ElemType,
                     Node1,
                     Node2,
                     (double)e_array.at(1),
-                    (double)e_array.at(4)
+                    initial_current
                 );
-                break;
+                } break;
             case circuit::linelem::V:
                 switch ((circuit::power_source::TYPE_t)e_array.at(4)) {
-                    case circuit::power_source::DC:
+                    case circuit::power_source::DC: {
                         e = new circuit::V_dc(
                             *c,
                             ElemType,
@@ -93,9 +99,20 @@ void circuit_loader::circuit_from_filename(circuit * c, const std::string & file
                             (circuit::power_source::TYPE_t)e_array.at(4),
                             (double)e_array.at(1)
                         );
-                        break;
-                    // case circuit::power_source::PWL:
-                    //     break;
+                        } break;
+                    case circuit::power_source::PWL: {
+                        circuit::V_pwl::voltages_t voltages = {{0, e_array.at(1)}};
+                        for (int i = 6; i < e_array.size(); i+=2)
+                            voltages.emplace_back(e_array.at(i), e_array.at(i+1));
+                        e = new circuit::V_pwl(
+                            *c,
+                            ElemType,
+                            Node1,
+                            Node2,
+                            (circuit::power_source::TYPE_t)e_array.at(4),
+                            voltages
+                        );
+                        } break;
                     default:
                         cerr << "Unknown SOURCE_TYPE: " << (circuit::power_source::TYPE_t)e_array.at(4) << endl;
                         exit(1);
@@ -114,8 +131,19 @@ void circuit_loader::circuit_from_filename(circuit * c, const std::string & file
                             (double)e_array.at(1)
                         );
                         break;
-                    // case circuit::power_source::PWL:
-                    //     break;
+                    case circuit::power_source::PWL: {
+                        circuit::I_pwl::currents_t currents = {{0, e_array.at(1)}};
+                        for (int i = 6; i < e_array.size(); i+=2)
+                            currents.emplace_back(e_array.at(i), e_array.at(i+1));
+                        e = new circuit::I_pwl(
+                            *c,
+                            ElemType,
+                            Node1,
+                            Node2,
+                            (circuit::power_source::TYPE_t)e_array.at(4),
+                            currents
+                        );
+                        } break;
                     default:
                         cerr << "Unknown SOURCE_TYPE: " << (circuit::power_source::TYPE_t)e_array.at(4) << endl;
                         exit(1);
@@ -123,7 +151,7 @@ void circuit_loader::circuit_from_filename(circuit * c, const std::string & file
                 }
                 break;
             default:
-                cerr << "cl Unknown ElemType: " << ElemType << endl;
+                cerr << "Unknown ElemType: " << ElemType << endl;
                 exit(1);
                 break;
         }
