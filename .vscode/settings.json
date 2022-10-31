@@ -1,7 +1,7 @@
 {
     "C_Cpp.default.includePath": [
         "lib/eigen",
-        "lib/json/single_include/nlohmann",
+        "lib/json/single_include",
         "${default}"
     ]
 }
