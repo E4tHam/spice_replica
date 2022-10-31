@@ -15,6 +15,14 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
     const auto LINELEM = j.at("LINELEM");
     const auto NODES = j.at("NODES");
     const auto LINNAME = j.at("LINNAME");
+    const auto INFO = j.at("INFO");
+    if (INFO.at(0) != 3)
+        throw TranNotFound();
+    c->time_step = INFO.at(1);
+    c->stop_time = INFO.at(2);
+    c->PLOTNV = j.at("PLOTNV").get< std::vector<int> >();
+    c->PLOTBV = j.at("PLOTBV").get< std::vector<int> >();
+    c->PLOTBI = j.at("PLOTBI").get< std::vector<int> >();
     size_t e_name_i = 0;
     for (const auto & e_array : LINELEM) {
 
@@ -202,7 +210,10 @@ void circuit_interface::export_circuit(const circuit * const c, const std::strin
     json j = {
         {"time_step", c->time_step},
         {"NODES", NODES},
-        {"LINELEMS", LINELEMS}
+        {"LINELEMS", LINELEMS},
+        {"PLOTNV", c->PLOTNV},
+        {"PLOTBV", c->PLOTBV},
+        {"PLOTBI", c->PLOTBI}
     };
     ofstream ofs(filename);
     ofs << j;

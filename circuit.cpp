@@ -11,10 +11,6 @@ using namespace std;
 circuit::node GND_INSTANCE(-1, 0, -1);
 circuit::node * const circuit::gnd = &GND_INSTANCE;
 
-const double circuit::time_step = 0.0000000001;
-
-
-
 
 
 
@@ -325,6 +321,17 @@ void circuit::step() {
 }
 
 
+void circuit::tran() {
+    // cout << "About to begin transient: time_step=" << time_step << " stop_time=" << stop_time << endl;
+    double time = 0;
+    while (time < stop_time) {
+        step();
+        time = step_num * time_step;
+    }
+    // cout << "Ran for " << step_num << " steps" << endl;
+}
+
+
 // node getters
 double circuit::node::voltage(const int & t) const {
     if (this==circuit::gnd)
@@ -348,10 +355,10 @@ double circuit::storage_device::current(const int & t) const {
     return currents.at( (t<0)?(c.step_num+1+t):(t) );
 }
 double circuit::capacitor::conductance() const {
-    return capacitance / circuit::time_step;
+    return capacitance / c.time_step;
 }
 double circuit::inductor::conductance() const {
-    return circuit::time_step / inductance;
+    return c.time_step / inductance;
 }
 
 // power sources
@@ -373,14 +380,14 @@ double pwl_value(double x, vector< pair<double,double> > v) {
     return v.at(0).second;
 }
 double circuit::V_pwl::voltage(const int & t) const {
-    double time = (double)((t<0)?(c.step_num+1+t):(t)) * time_step;
+    double time = (double)((t<0)?(c.step_num+1+t):(t)) * c.time_step;
     return pwl_value(time, voltages);
 }
 double circuit::I_dc::current(const int & t) const {
     return current_value;
 }
 double circuit::I_pwl::current(const int & t) const {
-    double time = (double)((t<0)?(c.step_num+1+t):(t)) * time_step;
+    double time = (double)((t<0)?(c.step_num+1+t):(t)) * c.time_step;
     return pwl_value(time, currents);
 }
 

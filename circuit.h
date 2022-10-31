@@ -120,8 +120,6 @@ public:
 
     // static variables
     static node * const gnd;
-    static const double time_step;
-
 
 
     // functions
@@ -130,6 +128,7 @@ public:
     ~circuit();
 
     void step();
+    void tran();
 
     void print() const;
     void to_json(const std::string & filename) const;
@@ -148,6 +147,11 @@ private:
     // matrix model
     Eigen::SparseLU< Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int> > A;
     size_t n, m;
+
+    // tran
+    std::vector<int> PLOTNV, PLOTBV, PLOTBI;
+    double time_step;
+    double stop_time;
 
     // friends
     friend class circuit_interface;
