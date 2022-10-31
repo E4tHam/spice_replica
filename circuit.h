@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include <Eigen/Dense>
+#include <Eigen/Eigen>
 #include <utility>
 
 class circuit {
@@ -146,7 +146,7 @@ private:
     std::unordered_map<int,node*> nodes;
 
     // matrix model
-    Eigen::MatrixXd A;
+    Eigen::SparseLU< Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int> > A;
     size_t n, m;
 
     // friends

@@ -42,7 +42,7 @@ circuit::circuit(const std::string & filename) {
     }
 
     // temporary matricies
-    Eigen::MatrixXd B, C, D,       G,    x;
+    Eigen::MatrixXd A_dense, B, C, D, G, x;
     Eigen::Matrix <double, Eigen::Dynamic, 1> I, E, z;
     size_t E_i;
 
@@ -108,12 +108,12 @@ circuit::circuit(const std::string & filename) {
     }
     C = B.transpose();
     D = Eigen::MatrixXd::Zero(m, m);
-    A = Eigen::MatrixXd(n+m, n+m);
-    A << G, B, C, D;
+    A_dense = Eigen::MatrixXd(n+m, n+m);
+    A_dense << G, B, C, D;
     z = Eigen::MatrixXd(n+m, 1);
     z << I, E;
-    x = A.completeOrthogonalDecomposition().solve(z);
-    // cout << A << endl << x << endl << z << endl;
+    x = A_dense.completeOrthogonalDecomposition().solve(z);
+    // cout << A_dense << endl << x << endl << z << endl;
 
     // record initial voltages
     for (auto node_i : nodes) {
@@ -209,14 +209,17 @@ circuit::circuit(const std::string & filename) {
     // cout << I << endl;
     C = B.transpose();
     D = Eigen::MatrixXd::Zero(m, m);
-    A = Eigen::MatrixXd(n+m, n+m);
-    A << G, B, C, D;
+    A_dense = Eigen::MatrixXd(n+m, n+m);
+    A_dense << G, B, C, D;
     z = Eigen::MatrixXd(n+m, 1);
     z << I, E;
 
+    A.analyzePattern(A_dense.sparseView());
+    A.factorize(A_dense.sparseView());
+
     // // verify
-    // x = A.completeOrthogonalDecomposition().solve(z);
-    // cout << A << endl << x << endl << z << endl;
+    // x = A_dense.completeOrthogonalDecomposition().solve(z);
+    // cout << A_dense << endl << x << endl << z << endl;
     // for (auto node_i : nodes)
     //     cout << node_i.second->name << " voltage is " << x(node_i.second->i,0 ) << endl;
 
@@ -286,7 +289,7 @@ void circuit::step() {
     }
     // cout << I << endl;
     z << I, E;
-    Eigen::MatrixXd x = A.completeOrthogonalDecomposition().solve(z);
+    Eigen::MatrixXd x = A.solve(z);
     // cout << A << endl << x << endl << z << endl;
 
 
