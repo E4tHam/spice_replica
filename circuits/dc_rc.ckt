@@ -1,0 +1,8 @@
+
+R1 1 0 1
+C1 1 0 1 100
+
+.TRAN TR 0.1 3
+.PLOTNV 1
+
+* node 1 should be ~37 at 1 second

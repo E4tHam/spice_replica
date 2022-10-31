@@ -2,4 +2,6 @@
 __starter/**    linguist-vendored
 
 *.m             linguist-language=MATLAB
-*.ckt           linguist-language=spice     # not supported :(
+
+# not supported :(
+*.ckt           linguist-language=spice
