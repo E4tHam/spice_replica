@@ -3,4 +3,5 @@ R1  1 0 1
 R2  2 1 1
 IDD 0 2 DC 1
 
-.DC
+.TRAN TR 1 1
+.PLOTNV 1 2

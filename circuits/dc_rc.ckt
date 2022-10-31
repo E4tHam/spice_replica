@@ -2,11 +2,7 @@
 R1 1 0 1
 C1 1 0 1 100
 
-* VDD 2 0 DC 1
-* R1  2 1 1
-* C1  0 1 1 1
+.TRAN TR 0.1 3
+.PLOTNV 1
 
-.DC
-
-* node 2 should be 2
-* node 1 should be 1
+* node 1 should be ~37 at 1 second

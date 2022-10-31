@@ -328,6 +328,7 @@ void circuit::tran() {
         step();
         time = step_num * time_step;
     }
+    stop_time = time;
     // cout << "Ran for " << step_num << " steps" << endl;
 }
 

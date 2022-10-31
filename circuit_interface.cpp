@@ -20,9 +20,17 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
         throw TranNotFound();
     c->time_step = INFO.at(1);
     c->stop_time = INFO.at(2);
-    c->PLOTNV = j.at("PLOTNV").get< std::vector<int> >();
-    c->PLOTBV = j.at("PLOTBV").get< std::vector<int> >();
-    c->PLOTBI = j.at("PLOTBI").get< std::vector<int> >();
+
+    vector<int> PLOTNV;
+    vector<int> PLOTBV;
+    vector<int> PLOTBI;
+    try {PLOTNV = j.at("PLOTNV").get< std::vector<int> >();}
+    catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { PLOTNV = {j.at("PLOTNV")}; }
+    try {PLOTBV = j.at("PLOTBV").get< std::vector<int> >();}
+    catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { PLOTBV = {j.at("PLOTBV")}; }
+    try {PLOTBI = j.at("PLOTBI").get< std::vector<int> >();}
+    catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { PLOTBI = {j.at("PLOTBI")}; }
+
     size_t e_name_i = 0;
     for (const auto & e_array : LINELEM) {
 
@@ -180,6 +188,10 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
 
         c->linelems.push_back(e);
     }
+
+    for (auto n : PLOTNV) c->PLOTNV.push_back(c->nodes[n]->name);
+    for (auto n : PLOTBV) c->PLOTBV.push_back(c->nodes[n]->name);
+    for (auto n : PLOTBI) c->PLOTBI.push_back(c->nodes[n]->name);
 }
 
 
@@ -209,6 +221,7 @@ void circuit_interface::export_circuit(const circuit * const c, const std::strin
     }
     json j = {
         {"time_step", c->time_step},
+        {"stop_time", c->stop_time},
         {"NODES", NODES},
         {"LINELEMS", LINELEMS},
         {"PLOTNV", c->PLOTNV},
