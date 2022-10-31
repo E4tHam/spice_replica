@@ -179,8 +179,32 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
 
 
 void circuit_interface::export_circuit(const circuit * const c, const std::string & filename) {
+    json NODES = {};
+    for (auto n : c->nodes) {
+        NODES.push_back({
+            {"name", n.second->name},
+            {"voltages", n.second->voltages}
+        });
+    }
+    json LINELEMS = {};
+    for (auto e : c->linelems) {
+        vector<double> voltages, currents;
+        for (size_t i = 0; i <= c->step_num; i++) {
+            voltages.push_back(e->voltage(i));
+            currents.push_back(e->voltage(i));
+        }
+        LINELEMS.push_back({
+            {"name", e->name},
+            {"voltages", voltages},
+            {"currents", currents}
+        });
+    }
     json j = {
-        {"time_step",c->time_step}
+        {"time_step", c->time_step},
+        {"NODES", NODES},
+        {"LINELEMS", LINELEMS}
     };
-    cout << j << endl;
+    ofstream ofs(filename);
+    ofs << j;
+    ofs.close();
 }

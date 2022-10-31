@@ -2,3 +2,4 @@
 circuits_json
 *.o
 main
+out.json
