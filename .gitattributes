@@ -1,5 +1,5 @@
 
-__starter/**    linguist-vendored
+lib/**          linguist-vendored
 
 *.m             linguist-language=MATLAB
 
