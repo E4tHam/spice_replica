@@ -127,7 +127,7 @@ public:
     circuit(const std::string & filename);
     ~circuit();
 
-    void step();
+    void dc();
     void tran();
 
     void print() const;
@@ -135,23 +135,19 @@ public:
     size_t step_num;
 
 private:
-    // helper functions
-    void solve(); // use A and z to find currents and voltages
 
-    // time
+    typedef Eigen::SparseLU< Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int> > solver_t;
 
     // elements and nodes
     std::vector<linelem*> linelems;
     std::unordered_map<int,node*> nodes;
 
-    // matrix model
-    Eigen::SparseLU< Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int> > A;
-    size_t n, m;
-
     // tran
     std::vector<int> PLOTNV, PLOTBV, PLOTBI;
     double time_step;
     double stop_time;
+    void tran_fill_A(solver_t & A, const size_t & n, const size_t & m) const;
+    void tran_step(const solver_t & A, const size_t & n, const size_t & m);
 
     // friends
     friend class circuit_interface;

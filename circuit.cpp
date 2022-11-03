@@ -23,10 +23,30 @@ circuit::circuit(const std::string & filename) {
     // initialize this->nodes and this->linelems
     circuit_interface::circuit_from_filename(this, filename);
 
-    // init time
+}
+
+
+
+
+
+
+
+circuit::~circuit() {
+    for (auto e : linelems)
+        if (e) delete e;
+    for (auto n : nodes)
+        if (n.second) delete n.second;
+}
+
+
+
+
+void circuit::dc() {
+
     step_num = 0;
 
     // count number of each element
+    size_t n, m;
     size_t num_capacitors = 0;
     size_t num_voltage_sources = 0;
     for (auto e : linelems) {
@@ -46,8 +66,8 @@ circuit::circuit(const std::string & filename) {
     n = nodes.size();
     G = Eigen::MatrixXd::Zero(n, n);
     for (auto e : linelems) {
-        auto e_r = (resistor*)e;
         if (e->ElemType == linelem::R) {
+            auto e_r = (resistor*)e;
             if (e_r->Node1!=gnd)
                 G(e_r->Node1->i, e_r->Node1->i) += 1.0 / e_r->resistance;
             if (e_r->Node2!=gnd)
@@ -109,15 +129,13 @@ circuit::circuit(const std::string & filename) {
     z = Eigen::MatrixXd(n+m, 1);
     z << I, E;
     x = A_dense.completeOrthogonalDecomposition().solve(z);
-    // cout << A_dense << endl << x << endl << z << endl;
 
-    // record initial voltages
+    // record voltages
     for (auto node_i : nodes) {
         node_i.second->voltages.push_back( x(node_i.second->i,0 ) );
-        // cout << node_i.second->name << " voltage is " << x(node_i.second->i,0 ) << endl;
     }
 
-    // record initial currents
+    // record currents
     E_i = 0;
     for (auto e : linelems) {
         switch (e->ElemType) {
@@ -139,25 +157,40 @@ circuit::circuit(const std::string & filename) {
         }
     }
 
+}
+
+
+
+
+void circuit::tran_fill_A(solver_t & A, const size_t & n, const size_t & m) const {
+
+    Eigen::MatrixXd A_dense, B, C, D, G;
 
     // Create matricies modeling storage elements using Norton companion model
-    m = num_voltage_sources;
+    G = Eigen::MatrixXd::Zero(n, n);
     B = Eigen::MatrixXd::Zero(n, m);
-    I = Eigen::MatrixXd::Zero(n, 1);
-    E = Eigen::MatrixXd::Zero(m, 1);
-    E_i = 0;
+    size_t E_i = 0;
     for (auto e : linelems) {
         switch (e->ElemType) {
+            case linelem::R: {
+                auto e_r = (resistor*)e;
+                if (e_r->Node1!=gnd)
+                    G(e_r->Node1->i, e_r->Node1->i) += 1.0 / e_r->resistance;
+                if (e_r->Node2!=gnd)
+                    G(e_r->Node2->i, e_r->Node2->i) += 1.0 / e_r->resistance;
+                if (e_r->Node1!=gnd && e_r->Node2!=gnd) {
+                    G(e_r->Node1->i, e_r->Node2->i) -= 1.0 / e_r->resistance;
+                    G(e_r->Node2->i, e_r->Node1->i) -= 1.0 / e_r->resistance;
+                }
+            } break;
             case linelem::C: {
                 auto e_c = (capacitor*)e;
                 double I_eq = e_c->voltage() * e_c->conductance();
                 if (e_c->Node1!=gnd) {
                     G(e_c->Node1->i, e_c->Node1->i) += e_c->conductance();
-                    I(e_c->Node1->i, 0) += I_eq;
                 }
                 if (e_c->Node2!=gnd) {
                     G(e_c->Node2->i, e_c->Node2->i) += e_c->conductance();
-                    I(e_c->Node2->i, 0) -= I_eq;
                 }
                 if (e_c->Node1!=gnd && e_c->Node2!=gnd) {
                     G(e_c->Node1->i, e_c->Node2->i) -= e_c->conductance();
@@ -169,11 +202,9 @@ circuit::circuit(const std::string & filename) {
                 double I_eq = e_l->current();
                 if (e_l->Node1!=gnd) {
                     G(e_l->Node1->i, e_l->Node1->i) += e_l->conductance();
-                    I(e_l->Node1->i, 0) += I_eq;
                 }
                 if (e_l->Node2!=gnd) {
                     G(e_l->Node2->i, e_l->Node2->i) += e_l->conductance();
-                    I(e_l->Node2->i, 0) -= I_eq;
                 }
                 if (e_l->Node1!=gnd && e_l->Node2!=gnd) {
                     G(e_l->Node1->i, e_l->Node2->i) -= e_l->conductance();
@@ -186,62 +217,26 @@ circuit::circuit(const std::string & filename) {
                     B(e_v->Node1->i, E_i) = -1.0;
                 if (e_v->Node2!=gnd)
                     B(e_v->Node2->i, E_i) = 1.0;
-                E(E_i, 0) = -1.0 * e_v->voltage();
-                E_i++;
-                } break;
-            case linelem::I: {
-                auto e_i = (I_source*)e;
-                if (e_i->Node1!=gnd)
-                    I(e_i->Node1->i, 0) += e_i->current();
-                if (e_i->Node2!=gnd)
-                    I(e_i->Node2->i, 0) -= e_i->current();
                 } break;
             default: break;
         }
     }
 
-
-
-    // cout << I << endl;
     C = B.transpose();
     D = Eigen::MatrixXd::Zero(m, m);
     A_dense = Eigen::MatrixXd(n+m, n+m);
     A_dense << G, B, C, D;
-    z = Eigen::MatrixXd(n+m, 1);
-    z << I, E;
 
     A.analyzePattern(A_dense.sparseView());
     A.factorize(A_dense.sparseView());
 
-    // // verify
-    // x = A_dense.completeOrthogonalDecomposition().solve(z);
-    // cout << A_dense << endl << x << endl << z << endl;
-    // for (auto node_i : nodes)
-    //     cout << node_i.second->name << " voltage is " << x(node_i.second->i,0 ) << endl;
-
-    // print();
-    // exit(0);
-
 }
 
 
 
+void circuit::tran_step(const solver_t & A, const size_t & n, const size_t & m) {
 
 
-
-
-circuit::~circuit() {
-    for (auto e : linelems)
-        if (e) delete e;
-    for (auto n : nodes)
-        if (n.second) delete n.second;
-}
-
-
-
-
-
-void circuit::step() {
     // Generate z vector
     Eigen::Matrix <double, Eigen::Dynamic, 1> z, I, E;
 
@@ -283,16 +278,15 @@ void circuit::step() {
             default: break;
         }
     }
-    // cout << I << endl;
+
     z << I, E;
     Eigen::MatrixXd x = A.solve(z);
-    // cout << A << endl << x << endl << z << endl;
 
 
     // record voltages
     for (auto node_i : nodes) {
+        cout << "about to add " << x(node_i.second->i,0) << endl;
         node_i.second->voltages.push_back( x(node_i.second->i,0 ) );
-        // cout << node_i.second->name << " voltage is " << x(node_i.second->i,0 ) << endl;
     }
 
     // record currents
@@ -322,14 +316,40 @@ void circuit::step() {
 
 
 void circuit::tran() {
-    // cout << "About to begin transient: time_step=" << time_step << " stop_time=" << stop_time << endl;
+
+    // set initial voltages
+    dc();
+
+    cout << "about to start tran" << endl;
+    cout << nodes[1]->voltages.size() << " : " << nodes[1]->voltages.back() << endl;
+
+    solver_t A;
+
+    // count number of each element
+    size_t n, m;
+    size_t num_capacitors = 0;
+    size_t num_voltage_sources = 0;
+    for (auto e : linelems) {
+        switch (e->ElemType) {
+            case linelem::C: num_capacitors++; break;
+            case linelem::V: num_voltage_sources++; break;
+            default: break;
+        }
+    }
+
+    m = num_voltage_sources;
+    n = nodes.size();
+
+    circuit::tran_fill_A(A, n, m);
+
     double time = 0;
     while (time < stop_time) {
-        step();
+        tran_step(A, n, m);
+        cout << nodes[1]->voltages.size() << " : " << nodes[1]->voltages.back() << endl;
         time = step_num * time_step;
     }
     stop_time = time;
-    // cout << "Ran for " << step_num << " steps" << endl;
+
 }
 
 
@@ -399,7 +419,6 @@ void circuit::print() const {
         e->print();
     for (const auto & n : nodes)
         n.second->print();
-    // cout << A << endl;
 }
 
 void circuit::node::print() const {

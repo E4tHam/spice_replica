@@ -1,5 +1,7 @@
 
-circuits_json
 *.o
 main
 out.json
+
+*.asv
+circuits_json
