@@ -2,6 +2,7 @@
 clear;
 
 circuits = {
+    'circuits/dc_m.ckt', ...
     'circuits/dc_r.ckt', ...
     'circuits/dc_rl.ckt', ...
     'circuits/dc_rc.ckt', ...
@@ -18,7 +19,7 @@ circuits = {
 addpath('lib/ece594bb/matlab_parser.win.2022b');
 
 if ~exist('circuits_json', 'dir')
-    mkdir('circuits_json')
+    mkdir('circuits_json');
  end
 
 for i = 1:length(circuits)

@@ -7,12 +7,26 @@
 using namespace std;
 using namespace nlohmann;
 
+circuit::node * circuit_interface::add_node(circuit * c, int node_id, int name) {
+        // set nodes (If node doesn't exist, add it to c->nodes)
+        if ( c->nodes.find(node_id) == c->nodes.end() ) {
+            c->nodes[node_id] = new circuit::node(
+                node_id,
+                name,
+                node_id-1
+            );
+        }
+        return (node_id < 0) ? circuit::gnd : c->nodes[node_id];
+}
+
 // set c->nodes and c->linelems
 void circuit_interface::circuit_from_filename(circuit * c, const std::string & filename) {
     ifstream ifs(filename);
     auto j = json::parse( ifs );
     ifs.close();
     const auto LINELEM = j.at("LINELEM");
+    const auto NLNELEM = j.at("NLNELEM");
+    const auto NLNNAME = j.at("NLNNAME");
     const auto NODES = j.at("NODES");
     const auto LINNAME = j.at("LINNAME");
     const auto INFO = j.at("INFO");
@@ -31,6 +45,46 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
     try {PLOTBI = j.at("PLOTBI").get< std::vector<int> >();}
     catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { PLOTBI = {j.at("PLOTBI")}; }
 
+    try {
+        for (const auto & e_array : NLNELEM) {
+            int node1_id = (int)e_array.at(2);
+            int node1_name;
+            try {node1_name = NODES.at(node1_id-1);}
+            catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { node1_name = NODES; }
+            circuit::node * Node1 = add_node(c, node1_id, node1_name);
+            int node2_id = (int)e_array.at(4);
+            int node2_name;
+            try {node2_name = NODES.at(node2_id-1);}
+            catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { node2_name = NODES; }
+            circuit::node * Node2 = add_node(c, node2_id, node2_name);
+
+            c->diodes.push_back(new circuit::diode(
+                *c,
+                Node1,
+                Node2
+            ));
+
+        }
+    } catch (nlohmann::json_abi_v3_11_2::detail::type_error e) {
+
+            int node1_id = (int)NLNELEM.at(2);
+            int node1_name;
+            try {node1_name = NODES.at(node1_id-1);}
+            catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { node1_name = NODES; }
+            circuit::node * Node1 = add_node(c, node1_id, node1_name);
+            int node2_id = (int)NLNELEM.at(3);
+            int node2_name;
+            try {node2_name = NODES.at(node2_id-1);}
+            catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { node2_name = NODES; }
+            circuit::node * Node2 = add_node(c, node2_id, node2_name);
+
+            c->diodes.push_back(new circuit::diode(
+                *c,
+                Node1,
+                Node2
+            ));
+    }
+
     size_t e_name_i = 0;
     for (const auto & e_array : LINELEM) {
 
@@ -45,34 +99,22 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
         e_name_i++;
 
         // set nodes (If node doesn't exist, add it to c->nodes)
+        circuit::node * Node1 = circuit::gnd;
         int node1_id = (int)e_array.at(2);
-        if (    !(node1_id==circuit::gnd->id)
-                && (c->nodes.find(node1_id)==c->nodes.end())
-        ) {
-            int name;
-            try {name = NODES.at(node1_id-1);}
-            catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { name = NODES; }
-            c->nodes[node1_id] = new circuit::node(
-                node1_id,
-                name,
-                node1_id-1
-            );
+        if (node1_id != circuit::gnd->id) {
+            int node1_name;
+            try {node1_name = NODES.at(node1_id-1);}
+            catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { node1_name = NODES; }
+            Node1 = add_node(c, node1_id, node1_name);
         }
-        circuit::node *Node1 = (node1_id==circuit::gnd->id) ? circuit::gnd : c->nodes[node1_id];
-        int node2_id = (int)e_array.at(3);
-        if (    !(node2_id==circuit::gnd->id)
-                && (c->nodes.find(node2_id)==c->nodes.end())
-        ) {
-            int name;
-            try {name = NODES.at(node2_id-1);}
-            catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { name = NODES; }
-            c->nodes[node2_id] = new circuit::node(
-                node2_id,
-                name,
-                node2_id-1
-            );
+        circuit::node * Node2 = circuit::gnd;
+        int node2_id = (int)e_array.at(2);
+        if (node2_id != circuit::gnd->id) {
+            int node2_name;
+            try {node2_name = NODES.at(node2_id-1);}
+            catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { node2_name = NODES; }
+            Node2 = add_node(c, node2_id, node2_name);
         }
-        circuit::node *Node2 = (node2_id==circuit::gnd->id) ? circuit::gnd : c->nodes[node2_id];
 
         // Parse e_array into new element
         switch (ElemType) {
@@ -189,9 +231,11 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
         c->linelems.push_back(e);
     }
 
+    cout << "here" << endl;
     for (auto n : PLOTNV) c->PLOTNV.push_back(c->nodes[n]->name);
     for (auto n : PLOTBV) c->PLOTBV.push_back(c->nodes[n]->name);
     for (auto n : PLOTBI) c->PLOTBI.push_back(c->nodes[n]->name);
+    cout << "here" << endl;
 }
 
 

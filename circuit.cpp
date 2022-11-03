@@ -320,9 +320,6 @@ void circuit::tran() {
     // set initial voltages
     dc();
 
-    cout << "about to start tran" << endl;
-    cout << nodes[1]->voltages.size() << " : " << nodes[1]->voltages.back() << endl;
-
     solver_t A;
 
     // count number of each element
@@ -345,7 +342,6 @@ void circuit::tran() {
     double time = 0;
     while (time < stop_time) {
         tran_step(A, n, m);
-        cout << nodes[1]->voltages.size() << " : " << nodes[1]->voltages.back() << endl;
         time = step_num * time_step;
     }
     stop_time = time;
@@ -417,6 +413,8 @@ double circuit::I_pwl::current(const int & t) const {
 void circuit::print() const {
     for (const auto & e : linelems)
         e->print();
+    for (const auto & d : diodes)
+        d->print();
     for (const auto & n : nodes)
         n.second->print();
 }
@@ -445,6 +443,10 @@ void circuit::V_source::print() const {
 }
 void circuit::I_source::print() const {
     cout << name << " n" << Node1->name << " n" << Node2->name << " I=" << current() << " I=" << current() << endl;
+}
+
+void circuit::diode::print() const {
+    cout << "Diode n" << Node1->name << " n" << Node2->name << endl;
 }
 
 void circuit::to_json(const std::string & filename) const {

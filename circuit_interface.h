@@ -10,6 +10,8 @@ struct circuit_interface {
     private:
         // errors
         class TranNotFound { };
+
+    static circuit::node * add_node(circuit * c, int node_id, int name);
 };
 
 #endif

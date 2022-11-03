@@ -19,6 +19,18 @@ public:
         double voltage(const int & t = -1) const;
         void print() const;
     };
+
+    struct diode {
+        circuit & c;
+        node *Node1, *Node2;
+        // std::string name;
+        std::vector<double> voltages, currents;
+        diode(circuit & c, node *Node1, node *Node2)
+            : c(c), Node1(Node1), Node2(Node2) { }
+
+        void print() const;
+    };
+
     struct linelem {
         enum ElemType_t {
             R = 'R',
@@ -140,6 +152,7 @@ private:
 
     // elements and nodes
     std::vector<linelem*> linelems;
+    std::vector<diode*> diodes;
     std::unordered_map<int,node*> nodes;
 
     // tran
