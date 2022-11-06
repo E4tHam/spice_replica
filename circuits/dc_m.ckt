@@ -1,9 +1,8 @@
 
-VDD 1 0 DC 1
+VDD 1 0 DC 2
 * nD nG nS type W L model
-M1 2 0 1 n 1 1 1
-M2 2 0 1 n 1 1 1
-R1  0 1 1
+M1 1 0 2 n 1 1 1
+R1 2 0 1
 
 .MODEL 1 VT 0.83 MU 1.5e-1 COX 0.3e-4 LAMBDA 0.05 CJ0 4.0e-14
 .TRAN TR 1 1

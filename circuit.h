@@ -24,10 +24,13 @@ public:
         circuit & c;
         node *Node1, *Node2;
         // std::string name;
-        std::vector<double> voltages, currents;
+        std::vector<double> voltages;
         diode(circuit & c, node *Node1, node *Node2)
             : c(c), Node1(Node1), Node2(Node2) { }
-
+        double conductance(const double & V) const;
+        double NR_G_eq(const double & V) const;
+        double NR_I_eq(const double & V) const;
+        double I_D(const double & V) const;
         void print() const;
     };
 

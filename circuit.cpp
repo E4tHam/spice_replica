@@ -2,6 +2,7 @@
 #include "circuit.h"
 #include "circuit_interface.h"
 #include <iostream>
+#include <math.h>
 
 using namespace std;
 
@@ -61,6 +62,10 @@ void circuit::dc() {
     Eigen::MatrixXd A_dense, B, C, D, G, x;
     Eigen::Matrix <double, Eigen::Dynamic, 1> I, E, z;
     size_t E_i;
+
+    // nonlinear
+    Eigen::MatrixXd NR_G;
+    Eigen::Matrix <double, Eigen::Dynamic, 1> NR_I;
 
     // set G array with resistors only
     n = nodes.size();
@@ -122,13 +127,50 @@ void circuit::dc() {
             default: break;
         }
     }
+
     C = B.transpose();
     D = Eigen::MatrixXd::Zero(m, m);
     A_dense = Eigen::MatrixXd(n+m, n+m);
-    A_dense << G, B, C, D;
     z = Eigen::MatrixXd(n+m, 1);
-    z << I, E;
-    x = A_dense.completeOrthogonalDecomposition().solve(z);
+
+    unordered_map<diode*,double> k;
+    for (auto d : diodes) k[d] = 0.0;
+
+    // https://www.desmos.com/calculator/z0wakcoerx nr
+    // https://www.desmos.com/calculator/28kehu1od4 working math!
+    for (size_t nr_i = 0; nr_i < 100; nr_i++) {
+        NR_G = Eigen::MatrixXd::Zero(n, n);
+        NR_I = Eigen::MatrixXd::Zero(n, 1);
+        for (auto d : diodes) {
+            if (d->Node1!=gnd) {
+                NR_I(d->Node1->i, 0) -= d->NR_I_eq(k[d]);
+                NR_G(d->Node1->i, d->Node1->i) += d->NR_G_eq(k[d]);
+            }
+            if (d->Node2!=gnd) {
+
+                NR_I(d->Node2->i, 0) += d->NR_I_eq(k[d]);
+                NR_G(d->Node2->i, d->Node2->i) += d->NR_G_eq(k[d]);
+            }
+            if (d->Node1!=gnd && d->Node2!=gnd) {
+                NR_G(d->Node1->i, d->Node2->i) -= d->NR_G_eq(k[d]);
+                NR_G(d->Node2->i, d->Node1->i) -= d->NR_G_eq(k[d]);
+            }
+        }
+        A_dense << (G+NR_G), B, C, D;
+        z << (I+NR_I), E;
+        x = A_dense.completeOrthogonalDecomposition().solve(z);
+
+        for (auto d : diodes) {
+            double nr_voltage
+                = ((d->Node1==gnd) ? 0 : x(d->Node1->i, 0))
+                - ((d->Node2==gnd) ? 0 : x(d->Node2->i, 0));
+            k[d] = nr_voltage;
+        }
+    }
+
+    for (auto d : diodes) {
+        d->voltages.push_back(k[d]);
+    }
 
     // record voltages
     for (auto node_i : nodes) {
@@ -279,13 +321,15 @@ void circuit::tran_step(const solver_t & A, const size_t & n, const size_t & m) 
         }
     }
 
+
+
     z << I, E;
     Eigen::MatrixXd x = A.solve(z);
 
 
     // record voltages
     for (auto node_i : nodes) {
-        cout << "about to add " << x(node_i.second->i,0) << endl;
+        // cout << "about to add " << x(node_i.second->i,0) << endl;
         node_i.second->voltages.push_back( x(node_i.second->i,0 ) );
     }
 
@@ -357,6 +401,20 @@ double circuit::node::voltage(const int & t) const {
         return voltages.at(voltages.size()+t);
     else
         return voltages.at(t);
+}
+
+double circuit::diode::NR_G_eq(const double & V) const {
+    double I_0 = 0.0000000001;
+    double V_T = 0.0259;
+    return I_0 / V_T * exp(V/V_T);
+}
+double circuit::diode::NR_I_eq(const double & V) const {
+    return I_D(V) - NR_G_eq(V)*V;
+}
+double circuit::diode::I_D(const double & V) const {
+    double I_0 = 0.0000000001;
+    double V_T = 0.0259;
+    return I_0 * (exp(V/V_T)-1);
 }
 
 // linelem const getters
