@@ -1,0 +1,20 @@
+
+* * nD nG nS type W L model
+
+* VDD 1 0 DC 1
+* R1 1 2 1000
+* M1 2 1 0 n 1 1 1
+
+* VDD 1 0 DC 1
+* M1 3 2 0 n 1 1 1
+* R1 1 2 1
+* R2 2 3 1
+
+VDD 1 0 DC 1
+M1 2 0 1 p 1 1 2
+R1 2 0 1000
+
+.MODEL 1 VT 0.6 MU 1 COX 1 LAMBDA 0.05 CJ0 4.0e-14
+.MODEL 2 VT -0.6 MU 1 COX 1 LAMBDA 0.05 CJ0 4.0e-14
+.TRAN TR 1 1
+.PLOTNV 1 2

@@ -19,6 +19,34 @@ public:
         double voltage(const int & t = -1) const;
         void print() const;
     };
+
+    struct mosfet {
+        enum ElemType_t {
+            nmos = 1,
+            pmos = 0
+        };
+        circuit & c;
+        ElemType_t ElemType;
+        node *NodeD, *NodeS, *NodeG;
+        std::string name;
+
+        // V_T: threshold voltage
+        // MU: mobility
+        // LAMBDA: channel-width modulator
+        // C_OX: oxide capacitance
+        // C_J: junction capacitance
+        double W, L, V_T, MU, LAMBDA, C_OX, C_J;
+        mosfet(circuit & c, ElemType_t ElemType, node *NodeD, node *NodeS, node *NodeG, std::string name,
+                double W, double L, double V_T, double MU, double C_OX, double LAMBDA, double C_J)
+            : c(c), ElemType(ElemType), NodeD(NodeD), NodeS(NodeS), NodeG(NodeG), name(name),
+                W(W), L(L), V_T(V_T), MU(MU), C_OX(C_OX), LAMBDA(LAMBDA), C_J(C_J) { }
+        double conductance(const double & V_GS, const double & V_DS) const;
+        double I_DS(const double & V_GS, const double & V_DS) const;
+        double NR_G_eq(const double & V_GS,const double & V_DS) const;
+        double NR_I_eq(const double & V_GS,const double & V_DS) const;
+        void print() const;
+    };
+
     struct linelem {
         enum ElemType_t {
             R = 'R',
@@ -140,6 +168,7 @@ private:
 
     // elements and nodes
     std::vector<linelem*> linelems;
+    std::vector<mosfet*> mosfets;
     std::unordered_map<int,node*> nodes;
 
     // tran

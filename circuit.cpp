@@ -58,8 +58,8 @@ void circuit::dc() {
     }
 
     // temporary matricies
-    Eigen::MatrixXd A_dense, B, C, D, G, x;
-    Eigen::Matrix <double, Eigen::Dynamic, 1> I, E, z;
+    Eigen::MatrixXd A_dense, B, C, D, G, x, NR_G;
+    Eigen::Matrix <double, Eigen::Dynamic, 1> I, E, z, NR_I;
     size_t E_i;
 
     // set G array with resistors only
@@ -127,8 +127,50 @@ void circuit::dc() {
     A_dense = Eigen::MatrixXd(n+m, n+m);
     A_dense << G, B, C, D;
     z = Eigen::MatrixXd(n+m, 1);
-    z << I, E;
-    x = A_dense.completeOrthogonalDecomposition().solve(z);
+
+    struct mosfet_nodes{double vd, vs, vg;};
+    unordered_map<mosfet*,mosfet_nodes> k;
+    for (auto m : mosfets) k[m] = {0, 0, 0};
+
+    for (size_t nr_i = 0; nr_i < 100; nr_i++) {
+        NR_G = Eigen::MatrixXd::Zero(n, n);
+        NR_I = Eigen::MatrixXd::Zero(n, 1);
+        for (auto m : mosfets) {
+            double V_GS = k[m].vg-k[m].vs;
+            double V_DS = k[m].vd-k[m].vs;
+            if (m->NodeD!=gnd) {
+                NR_I(m->NodeD->i, 0) -= m->NR_I_eq(V_GS, V_DS);
+                NR_G(m->NodeD->i, m->NodeD->i) += m->NR_G_eq(V_GS, V_DS);
+            }
+            if (m->NodeS!=gnd) {
+                NR_I(m->NodeS->i, 0) += m->NR_I_eq(V_GS, V_DS);
+                NR_G(m->NodeS->i, m->NodeS->i) += m->NR_G_eq(V_GS, V_DS);
+            }
+            if (m->NodeD!=gnd && m->NodeS!=gnd) {
+                NR_G(m->NodeD->i, m->NodeS->i) -= m->NR_G_eq(V_GS, V_DS);
+                NR_G(m->NodeS->i, m->NodeD->i) -= m->NR_G_eq(V_GS, V_DS);
+            }
+        }
+        A_dense << (G+NR_G), B, C, D;
+        z << (I+NR_I), E;
+        x = A_dense.completeOrthogonalDecomposition().solve(z);
+
+        // if (nr_i<2)
+        //     cout << A_dense << endl << x << endl << z << endl;
+
+        for (auto m : mosfets) {
+            double V_GS = k[m].vg-k[m].vs;
+            double V_DS = k[m].vd-k[m].vs;
+            cout << " I_eq=" << m->NR_I_eq(V_GS, V_DS) << " G_eq=" << m->NR_G_eq(V_GS, V_DS);
+            k[m].vd = ((m->NodeD==gnd) ? 0 : x(m->NodeD->i, 0));
+            k[m].vs = ((m->NodeS==gnd) ? 0 : x(m->NodeS->i, 0));
+            k[m].vg = ((m->NodeG==gnd) ? 0 : x(m->NodeG->i, 0));
+            cout << " -> vd=" << k[m].vd << " vs=" << k[m].vs << " vg=" << k[m].vg << " I=" << m->I_DS(V_GS, V_DS) << endl;
+        }
+        // cout << endl;
+    }
+
+    // cout << A_dense << endl << x << endl << z << endl;
 
     // record voltages
     for (auto node_i : nodes) {
@@ -285,7 +327,7 @@ void circuit::tran_step(const solver_t & A, const size_t & n, const size_t & m) 
 
     // record voltages
     for (auto node_i : nodes) {
-        cout << "about to add " << x(node_i.second->i,0) << endl;
+        // cout << "about to add " << x(node_i.second->i,0) << endl;
         node_i.second->voltages.push_back( x(node_i.second->i,0 ) );
     }
 
@@ -320,9 +362,6 @@ void circuit::tran() {
     // set initial voltages
     dc();
 
-    cout << "about to start tran" << endl;
-    cout << nodes[1]->voltages.size() << " : " << nodes[1]->voltages.back() << endl;
-
     solver_t A;
 
     // count number of each element
@@ -345,7 +384,6 @@ void circuit::tran() {
     double time = 0;
     while (time < stop_time) {
         tran_step(A, n, m);
-        cout << nodes[1]->voltages.size() << " : " << nodes[1]->voltages.back() << endl;
         time = step_num * time_step;
     }
     stop_time = time;
@@ -357,15 +395,114 @@ void circuit::tran() {
 double circuit::node::voltage(const int & t) const {
     if (this==circuit::gnd)
         return 0;
-    else if (t<1)
+    if (voltages.size()==0)
+        return NAN;
+    if (t<1)
         return voltages.at(voltages.size()+t);
-    else
-        return voltages.at(t);
+    return voltages.at(t);
+}
+
+double circuit::mosfet::conductance(const double & V_GS, const double & V_DS) const {
+    if (ElemType==nmos) {
+        // cutoff
+        if (V_GS <= V_T)
+            return 0;
+
+        // extra case for correct convergence
+        if (V_DS < 0)
+            return 1;
+
+        double V_GST = V_GS-V_T;
+        double k = MU * C_OX * W / L;
+        double gm = 1 + LAMBDA * V_DS;
+
+        // linear
+        if (V_DS <= V_GST)
+            return k*LAMBDA*(V_GST*V_DS-pow(V_DS,2)/2) + k*(-V_DS+V_GST)*gm;
+
+        // saturation
+        return 0.5 * k * pow(V_GST,2) * LAMBDA;
+    } else if (ElemType==pmos) {
+        // cutoff
+        if (V_GS >= V_T)
+            return 0;
+
+        // extra case for correct convergence
+        if (V_DS > 0)
+            return 1;
+
+        double V_GST = V_GS-V_T;
+        double k = MU * C_OX * W / L;
+        double gm = 1 - LAMBDA * V_DS;
+
+        // linear
+        if (V_DS >= V_GST)
+            return k*LAMBDA*(V_GST*V_DS-pow(V_DS,2)/2) - k*(V_GST-V_DS)*gm;
+
+        // saturation
+        return 0.5 * k * pow(V_GST,2) * LAMBDA;
+    } else {
+        cerr << "Unknown MOSFET type: " << ElemType << endl;
+        exit(1);
+    }
+}
+double circuit::mosfet::I_DS(const double & V_GS, const double & V_DS) const {
+    if (ElemType==nmos) {
+        // cutoff
+        if (V_GS <= V_T)
+            return 0;
+
+        // extra case for correct convergence
+        if (V_DS < 0)
+            return V_DS;
+
+        double V_GST = V_GS-V_T;
+        double k = MU * C_OX * W / L;
+        double gm = 1 + (LAMBDA*V_DS);
+
+        // linear
+        if (V_DS <= V_GST) {
+            return k * (V_DS*V_GST - 0.5*pow(V_DS,2)) * gm;
+        }
+
+        // saturation
+        return 0.5 * k * pow(V_GST,2) * gm;
+    } else if (ElemType==pmos) {
+        // cutoff
+        if (V_GS >= V_T)
+            return 0;
+
+        // extra case for correct convergence
+        if (V_DS > 0)
+            return V_DS;
+
+        double V_GST = V_GS-V_T;
+        double k = MU * C_OX * W / L;
+        double gm = 1 - LAMBDA * V_DS;
+
+        // linear
+        if (V_DS >= V_GST)
+            return -k * (V_DS*V_GST - 0.5*pow(V_DS,2)) * gm;
+
+        // saturation
+        return -0.5 * k * pow(V_GST,2) * gm;
+    } else {
+        cerr << "Unknown MOSFET type: " << ElemType << endl;
+        exit(1);
+    }
+}
+
+double circuit::mosfet::NR_G_eq(const double & V_GS,const double & V_DS) const {
+    return conductance(V_GS, V_DS);
+}
+
+double circuit::mosfet::NR_I_eq(const double & V_GS,const double & V_DS) const {
+    return I_DS(V_GS, V_DS) - (conductance(V_GS, V_DS)*V_DS);
 }
 
 // linelem const getters
 double circuit::linelem::voltage(const int & t) const {
-    return Node1->voltage() - Node2->voltage();
+    return Node1->voltage(t) - Node2->voltage(t);
 }
 double circuit::resistor::current(const int & t) const {
     return voltage(t) / resistance;
@@ -373,6 +510,7 @@ double circuit::resistor::current(const int & t) const {
 
 // storage devices
 double circuit::storage_device::current(const int & t) const {
+    if (currents.size()==0) return NAN;
     return currents.at( (t<0)?(c.step_num+1+t):(t) );
 }
 double circuit::capacitor::conductance() const {
@@ -384,6 +522,7 @@ double circuit::inductor::conductance() const {
 
 // power sources
 double circuit::V_source::current(const int & t) const {
+    if (currents.size()==0) return NAN;
     return currents.at( (t<0)?(c.step_num+1+t):(t) );
 }
 double circuit::V_dc::voltage(const int & t) const {
@@ -417,12 +556,14 @@ double circuit::I_pwl::current(const int & t) const {
 void circuit::print() const {
     for (const auto & e : linelems)
         e->print();
+    for (const auto & m : mosfets)
+        m->print();
     for (const auto & n : nodes)
         n.second->print();
 }
 
 void circuit::node::print() const {
-    cout << "n" << name << " V=" << voltage() << endl;
+    cout << "n" << name << " id" << id << " i" << i << " V=" << voltage() << endl;
 }
 
 void circuit::linelem::print() const {
@@ -444,7 +585,12 @@ void circuit::V_source::print() const {
     cout << name << " n" << Node1->name << " n" << Node2->name << " V=" << voltage() << " I=" << current() << endl;
 }
 void circuit::I_source::print() const {
-    cout << name << " n" << Node1->name << " n" << Node2->name << " I=" << current() << " I=" << current() << endl;
+    cout << name << " n" << Node1->name << " n" << Node2->name << " V=" << voltage() << " I=" << current() << endl;
+}
+
+void circuit::mosfet::print() const {
+    cout << name << ((ElemType==nmos)?(" nmos"):(ElemType==pmos)?(" pmos"):(" ????")) << " D=n" << NodeD->name << " S=n" << NodeS->name << " G=n" << " I_DS=" << I_DS(NodeG->voltage()-NodeS->voltage(), NodeD->voltage()-NodeS->voltage()) << endl;
+    // cout << name << ((ElemType==nmos)?(" nmos"):(ElemType==pmos)?(" pmos"):(" ????")) << " n" << Node1->name << " n" << Node2->name << " g_n" << NodeG->name << " W=" << W << " L=" << L << " V_T=" << V_T << " MU=" << MU << " C_OX=" << C_OX << " LAMBDA=" << LAMBDA << " C_J=" << C_J << endl;
 }
 
 void circuit::to_json(const std::string & filename) const {
