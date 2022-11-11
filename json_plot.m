@@ -30,22 +30,22 @@ for i = 1:length(tran.NODES)
     end
 end
 
-for i = 1:length(tran.NLNELEMS)
-    for j = 1:length(tran.PLOTBI)
-        if tran.NLNELEMS(i).name == tran.PLOTBI(j)
-            figure();
-            plot(x_ticks, tran.NLNELEMS(i).currents);
-            title(append('Node ', string(tran.NLNELEMS(i).name), ' I_DS'));
-            xlabel('time (s)');
-            ylabel('Current');
-            xlim([0 tran.stop_time]);
-            ylim([-inf inf]);
-            if all(tran.NODES(i).voltages >= 0)
-                ylim([0 inf]);
-            end
-            if all(tran.NODES(i).voltages <= 0)
-                ylim([-inf 0]);
-            end
-        end
-    end
-end
+% for i = 1:length(tran.NLNELEMS)
+%     for j = 1:length(tran.PLOTBI)
+%         if tran.NLNELEMS(i).name == tran.PLOTBI(j)
+%             figure();
+%             plot(x_ticks, tran.NLNELEMS(i).currents);
+%             title(append('Node ', string(tran.NLNELEMS(i).name), ' I_DS'));
+%             xlabel('time (s)');
+%             ylabel('Current');
+%             xlim([0 tran.stop_time]);
+%             ylim([-inf inf]);
+%             if all(tran.NODES(i).voltages >= 0)
+%                 ylim([0 inf]);
+%             end
+%             if all(tran.NODES(i).voltages <= 0)
+%                 ylim([-inf 0]);
+%             end
+%         end
+%     end
+% end
