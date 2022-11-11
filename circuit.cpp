@@ -23,6 +23,8 @@ circuit::circuit(const std::string & filename) {
     // initialize this->nodes and this->linelems
     circuit_interface::circuit_from_filename(this, filename);
 
+    tran_precision = 0.000000001;
+
 }
 
 
@@ -131,22 +133,21 @@ void circuit::dc() {
     struct mosfet_nodes{double vd, vs, vg;};
     unordered_map<mosfet*,mosfet_nodes> k;
     for (auto m : mosfets) k[m] = {0, 0, 0};
-
     for (size_t nr_i = 0; nr_i < 100; nr_i++) {
         NR_G = Eigen::MatrixXd::Zero(n, n);
         NR_I = Eigen::MatrixXd::Zero(n, 1);
         for (auto m : mosfets) {
             double V_GS = k[m].vg-k[m].vs;
             double V_DS = k[m].vd-k[m].vs;
-            if (m->NodeD!=gnd) {
-                NR_I(m->NodeD->i, 0) -= m->NR_I_eq(V_GS, V_DS);
-                NR_G(m->NodeD->i, m->NodeD->i) += m->NR_G_eq(V_GS, V_DS);
-            }
             if (m->NodeS!=gnd) {
                 NR_I(m->NodeS->i, 0) += m->NR_I_eq(V_GS, V_DS);
                 NR_G(m->NodeS->i, m->NodeS->i) += m->NR_G_eq(V_GS, V_DS);
             }
-            if (m->NodeD!=gnd && m->NodeS!=gnd) {
+            if (m->NodeD!=gnd) {
+                NR_I(m->NodeD->i, 0) -= m->NR_I_eq(V_GS, V_DS);
+                NR_G(m->NodeD->i, m->NodeD->i) += m->NR_G_eq(V_GS, V_DS);
+            }
+            if (m->NodeS!=gnd && m->NodeD!=gnd) {
                 NR_G(m->NodeD->i, m->NodeS->i) -= m->NR_G_eq(V_GS, V_DS);
                 NR_G(m->NodeS->i, m->NodeD->i) -= m->NR_G_eq(V_GS, V_DS);
             }
@@ -155,19 +156,20 @@ void circuit::dc() {
         z << (I+NR_I), E;
         x = A_dense.completeOrthogonalDecomposition().solve(z);
 
-        // if (nr_i<2)
-        //     cout << A_dense << endl << x << endl << z << endl;
-
+        bool changed = false;
         for (auto m : mosfets) {
-            double V_GS = k[m].vg-k[m].vs;
-            double V_DS = k[m].vd-k[m].vs;
-            cout << " I_eq=" << m->NR_I_eq(V_GS, V_DS) << " G_eq=" << m->NR_G_eq(V_GS, V_DS);
-            k[m].vd = ((m->NodeD==gnd) ? 0 : x(m->NodeD->i, 0));
+            double vs = k[m].vs;
+            double vd = k[m].vd;
+            double vg = k[m].vg;
             k[m].vs = ((m->NodeS==gnd) ? 0 : x(m->NodeS->i, 0));
+            k[m].vd = ((m->NodeD==gnd) ? 0 : x(m->NodeD->i, 0));
             k[m].vg = ((m->NodeG==gnd) ? 0 : x(m->NodeG->i, 0));
-            cout << " -> vd=" << k[m].vd << " vs=" << k[m].vs << " vg=" << k[m].vg << " I=" << m->I_DS(V_GS, V_DS) << endl;
+            changed = changed || (abs(vs-k[m].vs)>=tran_precision) || (abs(vd-k[m].vd)>=tran_precision) || (abs(vg-k[m].vg)>=tran_precision);
         }
-        // cout << endl;
+        if (!changed) {
+            // cout << "exited tran at nr_i=" << nr_i << endl;
+            break;
+        }
     }
 
     // cout << A_dense << endl << x << endl << z << endl;
@@ -198,13 +200,23 @@ void circuit::dc() {
             default: break;
         }
     }
+    // for (auto e : itrelems) {
+    //     switch (e->ElemType) {
+    //         case linelem::C: {
+    //             auto e_c = (capacitor*)e;
+    //             e_c->currents.push_back( 0 );
+    //             E_i++;
+    //             } break;
+    //         default: break;
+    //     }
+    // }
 
 }
 
 
 
 
-void circuit::tran_fill_A(solver_t & A, const size_t & n, const size_t & m) const {
+void circuit::tran_fill_A(solver_t & A, Eigen::SparseMatrix<double> & A_copy, const size_t & n, const size_t & m) const {
 
     Eigen::MatrixXd A_dense, B, C, D, G;
 
@@ -212,7 +224,9 @@ void circuit::tran_fill_A(solver_t & A, const size_t & n, const size_t & m) cons
     G = Eigen::MatrixXd::Zero(n, n);
     B = Eigen::MatrixXd::Zero(n, m);
     size_t E_i = 0;
-    for (auto e : linelems) {
+    // for (size_t i = 0; i < (linelems.size()+itrelems.size()); i++) {
+    //     const auto & e = (i<linelems.size()) ? linelems.at(i) : itrelems.at(i);
+    for (const auto & e : linelems) {
         switch (e->ElemType) {
             case linelem::R: {
                 auto e_r = (resistor*)e;
@@ -227,7 +241,6 @@ void circuit::tran_fill_A(solver_t & A, const size_t & n, const size_t & m) cons
             } break;
             case linelem::C: {
                 auto e_c = (capacitor*)e;
-                double I_eq = e_c->voltage() * e_c->conductance();
                 if (e_c->Node1!=gnd) {
                     G(e_c->Node1->i, e_c->Node1->i) += e_c->conductance();
                 }
@@ -241,7 +254,6 @@ void circuit::tran_fill_A(solver_t & A, const size_t & n, const size_t & m) cons
                 } break;
             case linelem::L: {
                 auto e_l = (inductor*)e;
-                double I_eq = e_l->current();
                 if (e_l->Node1!=gnd) {
                     G(e_l->Node1->i, e_l->Node1->i) += e_l->conductance();
                 }
@@ -259,6 +271,7 @@ void circuit::tran_fill_A(solver_t & A, const size_t & n, const size_t & m) cons
                     B(e_v->Node1->i, E_i) = -1.0;
                 if (e_v->Node2!=gnd)
                     B(e_v->Node2->i, E_i) = 1.0;
+                E_i++;
                 } break;
             default: break;
         }
@@ -269,15 +282,15 @@ void circuit::tran_fill_A(solver_t & A, const size_t & n, const size_t & m) cons
     A_dense = Eigen::MatrixXd(n+m, n+m);
     A_dense << G, B, C, D;
 
-    A.analyzePattern(A_dense.sparseView());
-    A.factorize(A_dense.sparseView());
+    A_copy = A_dense.sparseView();
+    A.analyzePattern(A_copy);
+    A.factorize(A_copy);
 
 }
 
 
 
-void circuit::tran_step(const solver_t & A, const size_t & n, const size_t & m) {
-
+void circuit::tran_step(const solver_t & A, const Eigen::SparseMatrix<double> & A_copy, const size_t & n, const size_t & m) {
 
     // Generate z vector
     Eigen::Matrix <double, Eigen::Dynamic, 1> z, I, E;
@@ -321,8 +334,74 @@ void circuit::tran_step(const solver_t & A, const size_t & n, const size_t & m) 
         }
     }
 
-    z << I, E;
-    Eigen::MatrixXd x = A.solve(z);
+    Eigen::MatrixXd x;
+    if (mosfets.size()==0) {
+        z << I, E;
+        x = A.solve(z);
+        // cout << A_copy << endl << x << endl << z << endl << endl;
+    } else {
+        struct mosfet_nodes{double vd, vs, vg;};
+        unordered_map<mosfet*,mosfet_nodes> k;
+        for (auto m : mosfets) k[m] = {m->NodeD->voltage(), m->NodeS->voltage(), m->NodeG->voltage()};
+        for (size_t nr_i = 0; nr_i < 100; nr_i++) {
+            Eigen::SparseMatrix<double> NR_G(n+m, n+m);
+            solver_t A_combined_solver;
+            Eigen::Matrix <double, Eigen::Dynamic, 1> NR_I = Eigen::MatrixXd::Zero(n, 1);
+            for (auto m : mosfets) {
+                double V_GS = k[m].vg-k[m].vs;
+                double V_DS = k[m].vd-k[m].vs;
+                if (m->NodeS!=gnd) {
+                    NR_I(m->NodeS->i, 0) += m->NR_I_eq(V_GS, V_DS);
+                    NR_G.coeffRef(m->NodeS->i, m->NodeS->i) += m->NR_G_eq(V_GS, V_DS);
+                }
+                if (m->NodeD!=gnd) {
+                    NR_I(m->NodeD->i, 0) -= m->NR_I_eq(V_GS, V_DS);
+                    NR_G.coeffRef(m->NodeD->i, m->NodeD->i) += m->NR_G_eq(V_GS, V_DS);
+                }
+                if (m->NodeS!=gnd && m->NodeD!=gnd) {
+                    NR_G.coeffRef(m->NodeD->i, m->NodeS->i) -= m->NR_G_eq(V_GS, V_DS);
+                    NR_G.coeffRef(m->NodeS->i, m->NodeD->i) -= m->NR_G_eq(V_GS, V_DS);
+                }
+            }
+            Eigen::SparseMatrix<double> A_combined = A_copy + NR_G;
+            A_combined_solver.analyzePattern(A_combined);
+            A_combined_solver.factorize(A_combined);
+            z << (I+NR_I), E;
+            while (A_combined_solver.info()) {
+                cerr << "Program reached an unknown state. Exiting..." << endl;
+                exit(1);
+                // for (size_t i = 0; i < n+m; i++) {
+                //     bool is_zero = true;
+                //     for (size_t j = 0; j < n+m; j++) if (A_combined.coeffRef(i, j) != 0) is_zero = false;
+                //     if (is_zero) {
+                //         z(i,0) = 0;
+                //         A_combined.coeffRef(i,0) = 1;
+                //         A_combined.coeffRef(0,i) = 1;
+                //         cout << "zero row found at " << i << endl;
+                //     }
+                // }
+                // A_combined_solver.analyzePattern(A_combined);
+                // A_combined_solver.factorize(A_combined);
+            }
+
+            x = A_combined_solver.solve(z);
+
+            bool changed = false;
+            for (auto m : mosfets) {
+                double vs = k[m].vs;
+                double vd = k[m].vd;
+                double vg = k[m].vg;
+                k[m].vs = ((m->NodeS==gnd) ? 0 : x(m->NodeS->i, 0));
+                k[m].vd = ((m->NodeD==gnd) ? 0 : x(m->NodeD->i, 0));
+                k[m].vg = ((m->NodeG==gnd) ? 0 : x(m->NodeG->i, 0));
+                changed = changed || (abs(vs-k[m].vs)>tran_precision) || (abs(vd-k[m].vd)>tran_precision) || (abs(vg-k[m].vg)>tran_precision);
+            }
+            if (!changed) {
+                // cout << "exited tran at nr_i=" << nr_i << endl;
+                break;
+            }
+        }
+    }
 
 
     // record voltages
@@ -363,6 +442,7 @@ void circuit::tran() {
     dc();
 
     solver_t A;
+    Eigen::SparseMatrix<double> A_copy;
 
     // count number of each element
     size_t n, m;
@@ -379,11 +459,11 @@ void circuit::tran() {
     m = num_voltage_sources;
     n = nodes.size();
 
-    circuit::tran_fill_A(A, n, m);
+    circuit::tran_fill_A(A, A_copy, n, m);
 
     double time = 0;
     while (time < stop_time) {
-        tran_step(A, n, m);
+        tran_step(A, A_copy, n, m);
         time = step_num * time_step;
     }
     stop_time = time;
@@ -395,12 +475,20 @@ void circuit::tran() {
 double circuit::node::voltage(const int & t) const {
     if (this==circuit::gnd)
         return 0;
-    if (voltages.size()==0)
+    size_t i = (t<0) ? (voltages.size()+t) : (t);
+    if (i >= voltages.size()) {
+        cerr << "Warning: Tried to access voltage out of range." << endl;
         return NAN;
-    if (t<1)
-        return voltages.at(voltages.size()+t);
-    return voltages.at(t);
+    }
+    return voltages.at(i);
 }
+
+double circuit::mosfet::current(const size_t & t) const {
+    double V_GS = NodeG->voltage(t) - NodeS->voltage(t);
+    double V_DS = NodeD->voltage(t) - NodeS->voltage(t);
+    return I_DS(V_GS, V_DS);
+}
+
 
 double circuit::mosfet::conductance(const double & V_GS, const double & V_DS) const {
     if (ElemType==nmos) {

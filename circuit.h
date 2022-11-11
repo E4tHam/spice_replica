@@ -10,6 +10,7 @@
 
 class circuit {
 public:
+    double tran_precision;
     // structs
     struct node {
         int id, name, i;
@@ -40,6 +41,8 @@ public:
                 double W, double L, double V_T, double MU, double C_OX, double LAMBDA, double C_J)
             : c(c), ElemType(ElemType), NodeD(NodeD), NodeS(NodeS), NodeG(NodeG), name(name),
                 W(W), L(L), V_T(V_T), MU(MU), C_OX(C_OX), LAMBDA(LAMBDA), C_J(C_J) { }
+        // https://www.desmos.com/calculator/6dx8kxq8uo
+        double current(const size_t & t = -1) const;
         double conductance(const double & V_GS, const double & V_DS) const;
         double I_DS(const double & V_GS, const double & V_DS) const;
         double NR_G_eq(const double & V_GS,const double & V_DS) const;
@@ -142,8 +145,6 @@ public:
         I_pwl(circuit & c, ElemType_t ElemType, std::string name, node *Node1, node *Node2, TYPE_t SOURCE_TYPE, currents_t currents)
             : I_source(c, ElemType, name, Node1, Node2, SOURCE_TYPE), currents(currents) { }
     };
-    // struct V_pwl : V_source { };
-    // struct I_pwl : I_source { };
 
 
     // static variables
@@ -164,10 +165,11 @@ public:
 
 private:
 
+    // typedef Eigen::SimplicialLDLT< Eigen::SparseMatrix<double> > solver_t;
     typedef Eigen::SparseLU< Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int> > solver_t;
 
     // elements and nodes
-    std::vector<linelem*> linelems;
+    std::vector<linelem*> linelems, itrelems;
     std::vector<mosfet*> mosfets;
     std::unordered_map<int,node*> nodes;
 
@@ -175,8 +177,8 @@ private:
     std::vector<int> PLOTNV, PLOTBV, PLOTBI;
     double time_step;
     double stop_time;
-    void tran_fill_A(solver_t & A, const size_t & n, const size_t & m) const;
-    void tran_step(const solver_t & A, const size_t & n, const size_t & m);
+    void tran_fill_A(solver_t & A, Eigen::SparseMatrix<double> & A_copy, const size_t & n, const size_t & m) const;
+    void tran_step(const solver_t & A, const Eigen::SparseMatrix<double> & A_copy, const size_t & n, const size_t & m);
 
     // friends
     friend class circuit_interface;

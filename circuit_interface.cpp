@@ -36,14 +36,14 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
     c->stop_time = INFO.at(2);
 
     vector<int> PLOTNV;
-    vector<int> PLOTBV;
+    // vector<int> PLOTBV;
     vector<int> PLOTBI;
     try {PLOTNV = j.at("PLOTNV").get< std::vector<int> >();}
     catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { PLOTNV = {j.at("PLOTNV")}; }
-    try {PLOTBV = j.at("PLOTBV").get< std::vector<int> >();}
-    catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { PLOTBV = {j.at("PLOTBV")}; }
-    try {PLOTBI = j.at("PLOTBI").get< std::vector<int> >();}
-    catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { PLOTBI = {j.at("PLOTBI")}; }
+    // try {PLOTBV = j.at("PLOTBV").get< std::vector<int> >();}
+    // catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { PLOTBV = {j.at("PLOTBV")}; }
+    try { for (const auto & b : j.at("PLOTBI")) PLOTBI.push_back(b.at(0)); }
+    catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { PLOTBI = {j.at("PLOTBI").at(0)}; }
 
     size_t e_name_i = 0;
     try {
@@ -85,13 +85,50 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
                 NodeS,
                 NodeG,
                 name,
-                (double)e_array.at(5),
-                (double)e_array.at(6),
-                (double)e_array.at(7),
-                (double)e_array.at(8),
-                (double)e_array.at(9),
-                (double)e_array.at(10),
-                (double)e_array.at(11)
+                (double)e_array.at(5),  // W
+                (double)e_array.at(6),  // L
+                (double)e_array.at(7),  // V_T
+                (double)e_array.at(8),  // MU
+                (double)e_array.at(9),  // C_OX
+                (double)e_array.at(10), // LAMBDA
+                (double)e_array.at(11)  // C_J
+            ));
+
+            c->itrelems.push_back(new circuit::capacitor(
+                *c,
+                circuit::linelem::C,
+                (name+"__C_GS"),
+                NodeG,
+                NodeS,
+                (0.5 * (double)e_array.at(9) * (double)e_array.at(5) * (double)e_array.at(6)),
+                NAN
+            ));
+            c->itrelems.push_back(new circuit::capacitor(
+                *c,
+                circuit::linelem::C,
+                (name+"__C_GD"),
+                NodeG,
+                NodeD,
+                (0.5 * (double)e_array.at(9) * (double)e_array.at(5) * (double)e_array.at(6)),
+                NAN
+            ));
+            c->itrelems.push_back(new circuit::capacitor(
+                *c,
+                circuit::linelem::C,
+                (name+"__C_D0"),
+                NodeD,
+                circuit::gnd,
+                (double)e_array.at(11),
+                NAN
+            ));
+            c->itrelems.push_back(new circuit::capacitor(
+                *c,
+                circuit::linelem::C,
+                (name+"__C_S0"),
+                NodeS,
+                circuit::gnd,
+                (double)e_array.at(11),
+                NAN
             ));
 
         }
@@ -140,6 +177,43 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
             (double)NLNELEM.at(9),
             (double)NLNELEM.at(10),
             (double)NLNELEM.at(11)
+        ));
+
+        c->itrelems.push_back(new circuit::capacitor(
+            *c,
+            circuit::linelem::C,
+            (name+"__C_GS"),
+            NodeG,
+            NodeS,
+            (0.5 * (double)NLNELEM.at(9) * (double)NLNELEM.at(5) * (double)NLNELEM.at(6)),
+            NAN
+        ));
+        c->itrelems.push_back(new circuit::capacitor(
+            *c,
+            circuit::linelem::C,
+            (name+"__C_GD"),
+            NodeG,
+            NodeD,
+            (0.5 * (double)NLNELEM.at(9) * (double)NLNELEM.at(5) * (double)NLNELEM.at(6)),
+            NAN
+        ));
+        c->itrelems.push_back(new circuit::capacitor(
+            *c,
+            circuit::linelem::C,
+            (name+"__C_D0"),
+            NodeD,
+            circuit::gnd,
+            (double)NLNELEM.at(11),
+            NAN
+        ));
+        c->itrelems.push_back(new circuit::capacitor(
+            *c,
+            circuit::linelem::C,
+            (name+"__C_S0"),
+            NodeS,
+            circuit::gnd,
+            (double)NLNELEM.at(11),
+            NAN
         ));
     }
 
@@ -302,7 +376,7 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
     }
 
     for (auto n : PLOTNV) c->PLOTNV.push_back(c->nodes.at(n)->name);
-    for (auto n : PLOTBV) c->PLOTBV.push_back(c->nodes.at(n)->name);
+    // for (auto n : PLOTBV) c->PLOTBV.push_back(c->nodes.at(n)->name);
     for (auto n : PLOTBI) c->PLOTBI.push_back(c->nodes.at(n)->name);
 }
 
@@ -320,14 +394,23 @@ void circuit_interface::export_circuit(const circuit * const c, const std::strin
     }
     json LINELEMS = {};
     for (auto e : c->linelems) {
-        vector<double> voltages, currents;
+        vector<double> voltages;
         for (size_t i = 0; i <= c->step_num; i++) {
             voltages.push_back(e->voltage(i));
-            currents.push_back(e->voltage(i));
         }
         LINELEMS.push_back({
             {"name", e->name},
-            {"voltages", voltages},
+            {"voltages", voltages}
+        });
+    }
+    json NLNELEMS = {};
+    for (auto m : c->mosfets) {
+        vector<double> currents;
+        for (size_t i = 0; i <= c->step_num; i++) {
+            currents.push_back(m->current(i));
+        }
+        NLNELEMS.push_back({
+            {"name", m->name},
             {"currents", currents}
         });
     }
@@ -336,8 +419,9 @@ void circuit_interface::export_circuit(const circuit * const c, const std::strin
         {"stop_time", c->stop_time},
         {"NODES", NODES},
         {"LINELEMS", LINELEMS},
+        {"NLNELEMS", NLNELEMS},
         {"PLOTNV", c->PLOTNV},
-        {"PLOTBV", c->PLOTBV},
+        // {"PLOTBV", c->PLOTBV},
         {"PLOTBI", c->PLOTBI}
     };
     ofstream ofs(filename);

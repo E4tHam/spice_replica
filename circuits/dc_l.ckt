@@ -1,0 +1,24 @@
+
+* VDD 1 0 DC 2
+* Req 1 2 1
+* Ieq 1 2 DC 1.9482
+* R1  2 0 1
+
+* VDD 1 0 DC 2
+* Req 1 2 2
+* Ieq 1 2 DC 0.96115
+* R1  2 0 1
+
+* VDD 1 0 DC 2
+* Req 1 2 10
+* Ieq 1 2 DC 0.17151
+* R1  2 0 1
+
+VDD 1 0 DC 1
+R1  1 2 1
+Req 2 0 1250
+Ieq 2 0 DC -0.1
+
+.MODEL 1 VT 0.83 MU 1.5e-1 COX 0.3e-4 LAMBDA 0 CJ0 4.0e-14
+.TRAN TR 1 1
+.PLOTNV 1 2
