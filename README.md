@@ -1,9 +1,30 @@
 
-# Spice Replica
+# ESspice
 
-<https://github.com/E4tHam/spice_replica>
+<https://github.com/sifferman/ESspice>
 
 UCSB ECE 594BB F22 by Peng Li
+
+## About
+
+This is a simplified open-source SPICE implementation.
+
+### Supported Devices
+
+* DC Voltage Sources
+* PWL Voltage Sources
+* DC Current Sources
+* PWL Current Sources
+* Resistors
+* Capacitors
+* Inductors
+* N-MOSFETs
+* P-MOSFETs
+
+### Supported Analysis Types
+
+* DC
+* Transient (via Forward Euler Approximation)
 
 ## Running The Code Using The Provided `main.cpp`
 
