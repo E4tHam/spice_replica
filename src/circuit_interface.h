@@ -5,7 +5,7 @@
 #include "circuit.h"
 
 struct circuit_interface {
-    static void circuit_from_filename(circuit * c, const std::string & filename);
+    static void circuit_from_json(circuit * c, const std::string & js);
     static void export_circuit(const circuit * const c, const std::string & filename);
     private:
         // errors

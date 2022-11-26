@@ -1,9 +1,11 @@
 
+#include "matlab.h"
+
 #include "engine.h"
 #include "matrix.h"
 #include <string>
 
-std::string call_ckt_to_json(Engine * const ep, const std::string & filename) {
+std::string matlab::ckt_to_json(const std::string & filename) {
 
     mxArray * mxFilename = mxCreateString(&filename[0]);
     engPutVariable(ep, "filename", mxFilename);

@@ -18,10 +18,10 @@ circuit::node * const circuit::gnd = &GND_INSTANCE;
 // circuit methods
 circuit::circuit() { }
 
-circuit::circuit(const std::string & filename) {
+circuit::circuit(const std::string & js) {
 
     // initialize this->nodes and this->linelems
-    circuit_interface::circuit_from_filename(this, filename);
+    circuit_interface::circuit_from_json(this, js);
 
     tran_precision = 0.000000001;
 

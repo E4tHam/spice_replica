@@ -21,15 +21,7 @@ circuit::node * circuit_interface::add_node(circuit * c, int node_id, int name) 
 }
 
 // set c->nodes and c->linelems
-void circuit_interface::circuit_from_filename(circuit * c, const std::string & filename) {
-
-    Engine *ep;
-    if (!(ep = engOpen(""))) {
-        cerr << "Can't start MATLAB engine" << endl;
-        exit(1);
-    }
-    string js = call_ckt_to_json(ep, filename);
-    engClose(ep);
+void circuit_interface::circuit_from_json(circuit * c, const std::string & js) {
 
     auto j = json::parse(js);
     cout << j << endl;
