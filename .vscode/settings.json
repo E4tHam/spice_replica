@@ -1,7 +1,9 @@
 {
     "C_Cpp.default.includePath": [
+        "src",
         "lib/eigen",
         "lib/json/single_include",
+        "/usr/local/MATLAB/R2022b/extern/include",
         "${default}"
     ]
 }

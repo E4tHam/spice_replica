@@ -3,27 +3,36 @@
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include <fstream>
+#include "matlab.h"
 
 using namespace std;
 using namespace nlohmann;
 
 circuit::node * circuit_interface::add_node(circuit * c, int node_id, int name) {
-        // set nodes (If node doesn't exist, add it to c->nodes)
-        if ( c->nodes.find(node_id) == c->nodes.end() ) {
-            c->nodes[node_id] = new circuit::node(
-                node_id,
-                name,
-                node_id-1
-            );
-        }
-        return (node_id < 0) ? circuit::gnd : c->nodes[node_id];
+    // set nodes (If node doesn't exist, add it to c->nodes)
+    if ( c->nodes.find(node_id) == c->nodes.end() ) {
+        c->nodes[node_id] = new circuit::node(
+            node_id,
+            name,
+            node_id-1
+        );
+    }
+    return (node_id < 0) ? circuit::gnd : c->nodes[node_id];
 }
 
 // set c->nodes and c->linelems
 void circuit_interface::circuit_from_filename(circuit * c, const std::string & filename) {
-    ifstream ifs(filename);
-    auto j = json::parse( ifs );
-    ifs.close();
+
+    Engine *ep;
+    if (!(ep = engOpen(""))) {
+        cerr << "Can't start MATLAB engine" << endl;
+        exit(1);
+    }
+    string js = call_ckt_to_json(ep, filename);
+    engClose(ep);
+
+    auto j = json::parse(js);
+    cout << j << endl;
     const auto LINELEM = j.at("LINELEM");
     const auto LINNAME = j.at("LINNAME");
     const auto NLNELEM = j.at("NLNELEM");
@@ -35,126 +44,32 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
     c->time_step = INFO.at(1);
     c->stop_time = INFO.at(2);
 
-    vector<int> PLOTNV;
-    // vector<int> PLOTBV;
-    vector<int> PLOTBI;
-    try {PLOTNV = j.at("PLOTNV").get< std::vector<int> >();}
-    catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { PLOTNV = {j.at("PLOTNV")}; }
-    // try {PLOTBV = j.at("PLOTBV").get< std::vector<int> >();}
-    // catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { PLOTBV = {j.at("PLOTBV")}; }
-    try { for (const auto & b : j.at("PLOTBI")) PLOTBI.push_back(b.at(0)); }
-    catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { PLOTBI = {j.at("PLOTBI").at(0)}; }
+    vector<int> PLOTNV = j.at("PLOTNV").get< std::vector<int> >();
+    // vector<int> PLOTBV = j.at("PLOTBV").get< std::vector<int> >();
+    // vector<int> PLOTBI;
+    // for (const auto & b : j.at("PLOTBI")) PLOTBI.push_back(b.at(0));
 
     size_t e_name_i = 0;
-    try {
-        for (const auto & e_array : NLNELEM) {
-            circuit::node * NodeD = circuit::gnd;
-            int nodeD_id = (int)e_array.at(2);
-            if (nodeD_id != circuit::gnd->id) {
-                int nodeD_name;
-                try {nodeD_name = NODES.at(nodeD_id-1);}
-                catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { nodeD_name = NODES; }
-                NodeD = add_node(c, nodeD_id, nodeD_name);
-            }
-            circuit::node * NodeS = circuit::gnd;
-            int nodeS_id = (int)e_array.at(4);
-            if (nodeS_id != circuit::gnd->id) {
-                int nodeS_name;
-                try {nodeS_name = NODES.at(nodeS_id-1);}
-                catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { nodeS_name = NODES; }
-                NodeS = add_node(c, nodeS_id, nodeS_name);
-            }
-            circuit::node * NodeG = circuit::gnd;
-            int nodeG_id = (int)e_array.at(3);
-            if (nodeG_id != circuit::gnd->id) {
-                int nodeG_name;
-                try {nodeG_name = NODES.at(nodeG_id-1);}
-                catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { nodeG_name = NODES; }
-                NodeG = add_node(c, nodeG_id, nodeG_name);
-            }
-
-            // set name
-            string name = "";
-            for (auto x : NLNNAME.at(e_name_i)) name += (char)(int)x;
-            e_name_i++;
-
-            c->mosfets.push_back(new circuit::mosfet(
-                *c,
-                (circuit::mosfet::ElemType_t)e_array.at(1),
-                NodeD,
-                NodeS,
-                NodeG,
-                name,
-                (double)e_array.at(5),  // W
-                (double)e_array.at(6),  // L
-                (double)e_array.at(7),  // V_T
-                (double)e_array.at(8),  // MU
-                (double)e_array.at(9),  // C_OX
-                (double)e_array.at(10), // LAMBDA
-                (double)e_array.at(11)  // C_J
-            ));
-
-            c->itrelems.push_back(new circuit::capacitor(
-                *c,
-                circuit::linelem::C,
-                (name+"__C_GS"),
-                NodeG,
-                NodeS,
-                (0.5 * (double)e_array.at(9) * (double)e_array.at(5) * (double)e_array.at(6)),
-                NAN
-            ));
-            c->itrelems.push_back(new circuit::capacitor(
-                *c,
-                circuit::linelem::C,
-                (name+"__C_GD"),
-                NodeG,
-                NodeD,
-                (0.5 * (double)e_array.at(9) * (double)e_array.at(5) * (double)e_array.at(6)),
-                NAN
-            ));
-            c->itrelems.push_back(new circuit::capacitor(
-                *c,
-                circuit::linelem::C,
-                (name+"__C_D0"),
-                NodeD,
-                circuit::gnd,
-                (double)e_array.at(11),
-                NAN
-            ));
-            c->itrelems.push_back(new circuit::capacitor(
-                *c,
-                circuit::linelem::C,
-                (name+"__C_S0"),
-                NodeS,
-                circuit::gnd,
-                (double)e_array.at(11),
-                NAN
-            ));
-
-        }
-    } catch (nlohmann::json_abi_v3_11_2::detail::type_error e) {
+    for (const auto & e_array : NLNELEM) {
         circuit::node * NodeD = circuit::gnd;
-        int nodeD_id = (int)NLNELEM.at(2);
+        int nodeD_id = (int)e_array.at(2);
         if (nodeD_id != circuit::gnd->id) {
             int nodeD_name;
-            try {nodeD_name = NODES.at(nodeD_id-1);}
-            catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { nodeD_name = NODES; }
+            nodeD_name = NODES.at(nodeD_id-1);
             NodeD = add_node(c, nodeD_id, nodeD_name);
         }
         circuit::node * NodeS = circuit::gnd;
-        int nodeS_id = (int)NLNELEM.at(4);
+        int nodeS_id = (int)e_array.at(4);
         if (nodeS_id != circuit::gnd->id) {
             int nodeS_name;
-            try {nodeS_name = NODES.at(nodeS_id-1);}
-            catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { nodeS_name = NODES; }
+            nodeS_name = NODES.at(nodeS_id-1);
             NodeS = add_node(c, nodeS_id, nodeS_name);
         }
         circuit::node * NodeG = circuit::gnd;
-        int nodeG_id = (int)NLNELEM.at(3);
+        int nodeG_id = (int)e_array.at(3);
         if (nodeG_id != circuit::gnd->id) {
             int nodeG_name;
-            try {nodeG_name = NODES.at(nodeG_id-1);}
-            catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { nodeG_name = NODES; }
+            nodeG_name = NODES.at(nodeG_id-1);
             NodeG = add_node(c, nodeG_id, nodeG_name);
         }
 
@@ -165,18 +80,18 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
 
         c->mosfets.push_back(new circuit::mosfet(
             *c,
-            (circuit::mosfet::ElemType_t)NLNELEM.at(1),
+            (circuit::mosfet::ElemType_t)e_array.at(1),
             NodeD,
             NodeS,
             NodeG,
             name,
-            (double)NLNELEM.at(5),
-            (double)NLNELEM.at(6),
-            (double)NLNELEM.at(7),
-            (double)NLNELEM.at(8),
-            (double)NLNELEM.at(9),
-            (double)NLNELEM.at(10),
-            (double)NLNELEM.at(11)
+            (double)e_array.at(5),  // W
+            (double)e_array.at(6),  // L
+            (double)e_array.at(7),  // V_T
+            (double)e_array.at(8),  // MU
+            (double)e_array.at(9),  // C_OX
+            (double)e_array.at(10), // LAMBDA
+            (double)e_array.at(11)  // C_J
         ));
 
         c->itrelems.push_back(new circuit::capacitor(
@@ -185,7 +100,7 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
             (name+"__C_GS"),
             NodeG,
             NodeS,
-            (0.5 * (double)NLNELEM.at(9) * (double)NLNELEM.at(5) * (double)NLNELEM.at(6)),
+            (0.5 * (double)e_array.at(9) * (double)e_array.at(5) * (double)e_array.at(6)),
             NAN
         ));
         c->itrelems.push_back(new circuit::capacitor(
@@ -194,7 +109,7 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
             (name+"__C_GD"),
             NodeG,
             NodeD,
-            (0.5 * (double)NLNELEM.at(9) * (double)NLNELEM.at(5) * (double)NLNELEM.at(6)),
+            (0.5 * (double)e_array.at(9) * (double)e_array.at(5) * (double)e_array.at(6)),
             NAN
         ));
         c->itrelems.push_back(new circuit::capacitor(
@@ -203,7 +118,7 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
             (name+"__C_D0"),
             NodeD,
             circuit::gnd,
-            (double)NLNELEM.at(11),
+            (double)e_array.at(11),
             NAN
         ));
         c->itrelems.push_back(new circuit::capacitor(
@@ -212,10 +127,12 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
             (name+"__C_S0"),
             NodeS,
             circuit::gnd,
-            (double)NLNELEM.at(11),
+            (double)e_array.at(11),
             NAN
         ));
+
     }
+
 
     e_name_i = 0;
     for (const auto & e_array : LINELEM) {
@@ -236,8 +153,7 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
                 && (c->nodes.find(node1_id)==c->nodes.end())
         ) {
             int name;
-            try {name = NODES.at(node1_id-1);}
-            catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { name = NODES; }
+            name = NODES.at(node1_id-1);
             c->nodes[node1_id] = new circuit::node(
                 node1_id,
                 name,
@@ -250,8 +166,7 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
                 && (c->nodes.find(node2_id)==c->nodes.end())
         ) {
             int name;
-            try {name = NODES.at(node2_id-1);}
-            catch (nlohmann::json_abi_v3_11_2::detail::type_error e) { name = NODES; }
+            name = NODES.at(node2_id-1);
             c->nodes[node2_id] = new circuit::node(
                 node2_id,
                 name,
@@ -377,7 +292,7 @@ void circuit_interface::circuit_from_filename(circuit * c, const std::string & f
 
     for (auto n : PLOTNV) c->PLOTNV.push_back(c->nodes.at(n)->name);
     // for (auto n : PLOTBV) c->PLOTBV.push_back(c->nodes.at(n)->name);
-    for (auto n : PLOTBI) c->PLOTBI.push_back(c->nodes.at(n)->name);
+    // for (auto n : PLOTBI) c->PLOTBI.push_back(c->nodes.at(n)->name);
 }
 
 

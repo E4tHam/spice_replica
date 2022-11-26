@@ -4,4 +4,4 @@ main
 out.json
 
 *.asv
-circuits_json
+logs
