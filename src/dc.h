@@ -10,6 +10,8 @@ class dc : public analysis {
 public:
     dc(const circuit * const c);
 
+    void plotnv(matlab * const m, const int & node_name) const { exit(1); }
+
     double voltage(const circuit::node * const n) const {
         if (n==circuit::gnd) return 0;
         return node_voltage.at(n);

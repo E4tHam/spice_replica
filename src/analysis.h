@@ -3,15 +3,19 @@
 #define __ANALYSIS_H
 
 #include "circuit.h"
+#include "matlab.h"
 #include <vector>
 
 class analysis {
 public:
     analysis(const circuit * const c);
     enum TYPE_t {
-        DC = 1, // fix
+        DC = 1, // todo: verify
         TRAN = 3
     };
+    virtual void plotnv(matlab * const m, const int & node_name) const = 0;
+    // virtual void plotbv() const = 0;
+    // virtual void plotbi() const = 0;
 protected:
     static constexpr double precision = 0.000000001;
     const circuit * const c;

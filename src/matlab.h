@@ -6,6 +6,7 @@
 #include "matrix.h"
 #include <string>
 #include <iostream>
+#include <vector>
 
 
 class matlab {
@@ -18,11 +19,13 @@ class matlab {
             } else {
                 std::cout << "SUCCESS!" << std::endl;
             }
+            engEvalString(ep, "addpath('src/matlab');");
         }
         ~matlab() {
             engClose(ep);
         }
         std::string ckt_to_json(const std::string & filename);
+        void show_plot(const std::vector<double> & data, const std::string & title, const std::string & xlabel, const std::string & ylabel, const double & xtick, const double & xlim);
     private:
         Engine * ep;
 };

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <cstdio>
 
 using namespace std;
 
@@ -23,13 +24,13 @@ int main(int argc, char const *argv[]) {
     string js = m.ckt_to_json(argv[1]);
     circuit a{js};
 
-    // dc analysis
-    dc dc_a(&a);
-
     // tran analysis
-    tran tran_a(&a, 1.0e-11, 2.0e-8);
-    helper::export_circuit(&tran_a, "out.json"); // to replace
+    tran tran_a(&a, 0.1, 3);
+    tran_a.plotnv(&m, 1);
 
-    cout << "Done." << endl;
+    // Allow time to look at figures
+    cout << "Press return to exit..." << endl;
+    getchar();
+    cout << "Exiting." << endl;
     return 0;
 }

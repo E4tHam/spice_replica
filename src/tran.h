@@ -4,6 +4,7 @@
 
 #include "helper.h"
 #include "analysis.h"
+#include "matlab.h"
 #include <Eigen/Eigen>
 
 #include <unordered_map>
@@ -11,6 +12,8 @@
 class tran : public analysis {
 public:
     tran(const circuit * const c, const double & time_step, const double & stop_time);
+
+    void plotnv(matlab * const m, const int & node_name) const;
 
     double voltage(const circuit::node * const n, const int & t = -1) const {
         if (n==circuit::gnd) return 0;

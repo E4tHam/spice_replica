@@ -40,8 +40,8 @@ tran::tran(const circuit * const c, const double & time_step, const double & sto
     }
 
     // Run each time step
-    this->stop_time = time_step;
-    while (this->stop_time <= stop_time) {
+    this->stop_time = 0;
+    while (this->stop_time < stop_time) {
         // Create z matrix
         Eigen::SparseMatrix<double> z(n+m, 1);
         for (const auto & e : c->linelems) {
@@ -111,6 +111,17 @@ tran::tran(const circuit * const c, const double & time_step, const double & sto
 
 }
 
+void tran::plotnv(matlab * const m, const int & node_name) const {
+    circuit::node * n = 0;
+    for (const auto i : c->nodes)
+        if (i.second->name == node_name)
+            n = i.second;
+    if (n==0) {
+        std::cerr << "Warning: Could not find node " << node_name << endl;
+        return;
+    }
+    m->show_plot(node_voltage.at(n), ("Node "+std::to_string(node_name)+" Voltage"), "time (s)", "Voltage", time_step, stop_time);
+}
 
 void tran::stamp_A(Eigen::SparseMatrix<double> & A, const circuit::linelem * const e) const {
     switch (e->ElemType) {
@@ -153,7 +164,6 @@ void tran::stamp_A(Eigen::SparseMatrix<double> & A, const circuit::linelem * con
             } break;
         case circuit::linelem::V: {
             const auto e_v = (circuit::V_source*)e;
-            cout << "n=" << c->nodes.size() << " n1i=" << e_v->Node1->i << " n2i=" << e_v->Node2->i << " mi=" << V_source_i.at(e_v) << endl;
             if (e_v->Node1!=circuit::gnd) {
                 A.coeffRef(e_v->Node1->i, c->nodes.size()+V_source_i.at(e_v)) = -1.0;
                 A.coeffRef(c->nodes.size()+V_source_i.at(e_v), e_v->Node1->i) = -1.0;
