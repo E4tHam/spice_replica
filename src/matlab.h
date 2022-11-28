@@ -11,9 +11,12 @@
 class matlab {
     public:
         matlab() {
+            std::cout << "Starting MATLAB engine...";
             if (!(ep = engOpen(""))) {
-                std::cerr << "Can't start MATLAB engine" << std::endl;
+                std::cerr << "FAILED!" << std::endl;
                 exit(1);
+            } else {
+                std::cout << "SUCCESS!" << std::endl;
             }
         }
         ~matlab() {
