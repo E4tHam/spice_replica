@@ -23,13 +23,13 @@ int main(int argc, char const *argv[]) {
     // load circuit
     string js = m.ckt_to_json(argv[1]);
     circuit a{js};
+    cout << "Finished loading circuit.";
 
-    // tran analysis
-    tran tran_a(&a, 0.1, 3);
-    tran_a.plotnv(&m, 1);
+    // Run circuit
+    a.run(&m);
 
     // Allow time to look at figures
-    cout << "Press return to exit..." << endl;
+    cout << "Press return to exit...";
     getchar();
     cout << "Exiting." << endl;
     return 0;

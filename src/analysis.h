@@ -10,9 +10,12 @@ class analysis {
 public:
     analysis(const circuit * const c);
     enum TYPE_t {
-        DC = 1, // todo: verify
-        TRAN = 3
+        DC      = 0,
+        TRAN_FE = 1,
+        TRAN_BE = 2,
+        TRAN_TR = 3
     };
+    class UnsupportedAnalysisType { };
     virtual void plotnv(matlab * const m, const int & node_name) const = 0;
     // virtual void plotbv() const = 0;
     // virtual void plotbi() const = 0;

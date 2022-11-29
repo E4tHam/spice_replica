@@ -2,6 +2,8 @@
 #include "circuit.h"
 #include <nlohmann/json.hpp>
 #include <iostream>
+#include <algorithm>
+#include "analysis.h"
 
 using namespace std;
 using namespace nlohmann;
@@ -21,6 +23,7 @@ circuit::circuit(const std::string & js) {
     const auto NLNNAME = j.at("NLNNAME");
     const auto NODES = j.at("NODES");
     const auto INFO = j.at("INFO");
+    analysis_type = new analysis::TYPE_t(INFO.at(0));
     time_step = INFO.at(1);
     stop_time = INFO.at(2);
 
@@ -187,7 +190,7 @@ circuit::circuit(const std::string & js) {
                         } break;
                     default:
                         cerr << "Unknown SOURCE_TYPE: " << (circuit::power_source::TYPE_t)e_array.at(4) << endl;
-                        exit(1);
+                        throw circuit::power_source::UnsupportedPowerSourceType();
                         break;
                 }
                 break;
@@ -220,13 +223,12 @@ circuit::circuit(const std::string & js) {
                         } break;
                     default:
                         cerr << "Unknown SOURCE_TYPE: " << (circuit::power_source::TYPE_t)e_array.at(4) << endl;
-                        exit(1);
+                        throw circuit::power_source::UnsupportedPowerSourceType();
                         break;
                 }
                 break;
             default:
-                cerr << "Unknown ElemType: " << ElemType << endl;
-                exit(1);
+                throw circuit::linelem::UnsupportedLinearElementType();
                 break;
         }
 
@@ -235,6 +237,7 @@ circuit::circuit(const std::string & js) {
     for (auto n : PLOTNV) {
         this->PLOTNV.push_back(nodes.at(n)->name);
     }
+    std::reverse(this->PLOTNV.begin(), this->PLOTNV.end());
     // for (auto n : PLOTBV) PLOTBV.push_back(nodes.at(n)->name);
     // for (auto n : PLOTBI) PLOTBI.push_back(nodes.at(n)->name);
 }
@@ -283,4 +286,22 @@ void circuit::I_source::print() const {
 }
 void circuit::mosfet::print() const {
     cout << name << ((ElemType==nmos)?(" nmos"):(ElemType==pmos)?(" pmos"):(" ????")) << " ND=" << NodeD->name << " NG=" << NodeG->name << " NS=" << NodeS->name << " W=" << W << " L=" << L << " V_T=" << V_T << " MU=" << MU << " C_OX=" << C_OX << " LAMBDA=" << LAMBDA << " C_J=" << C_J << endl;
+}
+
+void circuit::run(matlab * const m) const {
+    switch (*((analysis::TYPE_t*)analysis_type)) {
+        case analysis::DC: {
+            dc run_dc(this);
+            } break;
+        case analysis::TRAN_FE:
+        case analysis::TRAN_BE:
+        case analysis::TRAN_TR: {
+            tran run_tran(this, time_step, stop_time);
+            for (const auto & n : PLOTNV) {
+                cout << "about to plot " << n << endl;
+                run_tran.plotnv(m, n);
+            }
+            } break;
+        default: throw analysis::UnsupportedAnalysisType();
+    }
 }

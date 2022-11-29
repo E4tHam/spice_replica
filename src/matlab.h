@@ -11,13 +11,14 @@
 
 class matlab {
     public:
+        class CouldNotStartMatlabEngine { };
         matlab() {
-            std::cout << "Starting MATLAB engine...";
+            std::cerr << "Starting MATLAB engine...";
             if (!(ep = engOpen(""))) {
                 std::cerr << "FAILED!" << std::endl;
-                exit(1);
+                throw CouldNotStartMatlabEngine();
             } else {
-                std::cout << "SUCCESS!" << std::endl;
+                std::cerr << "SUCCESS!" << std::endl;
             }
             engEvalString(ep, "addpath('src/matlab');");
         }

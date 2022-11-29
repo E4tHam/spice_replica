@@ -197,7 +197,7 @@ double dc::mosfet_solver::conductance(const circuit::mosfet * const m, const dou
         return 0.5 * k * pow(V_GST,2) * m->LAMBDA;
     } else {
         cerr << "Unknown MOSFET type: " << m->ElemType << endl;
-        exit(1);
+        throw circuit::mosfet::UnsupportedMOSFETType();
     }
 }
 double dc::mosfet_solver::I_DS(const circuit::mosfet * const m, const double & V_GS, const double & V_DS) {
@@ -242,7 +242,7 @@ double dc::mosfet_solver::I_DS(const circuit::mosfet * const m, const double & V
         return -0.5 * k * pow(V_GST,2) * gm;
     } else {
         cerr << "Unknown MOSFET type: " << m->ElemType << endl;
-        exit(1);
+        throw circuit::mosfet::UnsupportedMOSFETType();
     }
 }
 

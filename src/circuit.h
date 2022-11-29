@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <Eigen/Eigen>
 #include <utility>
+#include "matlab.h"
 
 class circuit {
 public:
@@ -23,6 +24,7 @@ public:
             nmos = 1,
             pmos = 0
         };
+        class UnsupportedMOSFETType { };
         const circuit & c;
         ElemType_t ElemType;
         node *NodeD, *NodeS, *NodeG;
@@ -49,6 +51,7 @@ public:
             V = 'V',
             I = 'I'
         };
+        class UnsupportedLinearElementType { };
         const circuit & c;
         ElemType_t ElemType;
         std::string name;
@@ -85,6 +88,7 @@ public:
             // AC = 1,
             PWL = 2
         };
+        class UnsupportedPowerSourceType { };
         TYPE_t SOURCE_TYPE;
         power_source(const circuit & c, ElemType_t ElemType, std::string name, node *Node1, node *Node2, TYPE_t SOURCE_TYPE)
             : linelem(c, ElemType, name, Node1, Node2), SOURCE_TYPE(SOURCE_TYPE) { }
@@ -133,6 +137,7 @@ public:
     circuit(const std::string & filename);
     ~circuit();
 
+    void run(matlab * const m) const;
     void print() const;
     size_t step_num;
 
@@ -144,6 +149,7 @@ private:
     std::unordered_map<int,node*> nodes;
 
     // analysis
+    void * analysis_type; // analysis::TYPE_t *
     std::vector<int> PLOTNV, PLOTBV, PLOTBI;
     double time_step;
     double stop_time;
