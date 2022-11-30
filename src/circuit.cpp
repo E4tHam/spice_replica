@@ -13,9 +13,9 @@ circuit::node GND_INSTANCE(-1, 0, -1);
 circuit::node * const circuit::gnd = &GND_INSTANCE;
 
 // circuit methods
-circuit::circuit() { }
+circuit::circuit() : run_pointer(0) { }
 
-circuit::circuit(const std::string & js) {
+circuit::circuit(const std::string & js) : run_pointer(0) {
     auto j = json::parse(js);
     const auto LINELEM = j.at("LINELEM");
     const auto LINNAME = j.at("LINNAME");
@@ -288,19 +288,22 @@ void circuit::mosfet::print() const {
     cout << name << ((ElemType==nmos)?(" nmos"):(ElemType==pmos)?(" pmos"):(" ????")) << " ND=" << NodeD->name << " NG=" << NodeG->name << " NS=" << NodeS->name << " W=" << W << " L=" << L << " V_T=" << V_T << " MU=" << MU << " C_OX=" << C_OX << " LAMBDA=" << LAMBDA << " C_J=" << C_J << endl;
 }
 
-void circuit::run(matlab * const m) const {
+analysis * circuit::run(matlab * const m) const {
+    if (run_pointer!=0)
+        delete run_pointer;
     switch (*((analysis::TYPE_t*)analysis_type)) {
         case analysis::DC: {
-            dc run_dc(this);
+            run_pointer = new dc(this);
+            return run_pointer;
             } break;
         case analysis::TRAN_FE:
         case analysis::TRAN_BE:
         case analysis::TRAN_TR: {
-            tran run_tran(this, time_step, stop_time);
+            run_pointer = new tran(this, time_step, stop_time);
             for (const auto & n : PLOTNV) {
-                cout << "about to plot " << n << endl;
-                run_tran.plotnv(m, n);
+                run_pointer->plotnv(m, n);
             }
+            return run_pointer;
             } break;
         default: throw analysis::UnsupportedAnalysisType();
     }

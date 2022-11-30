@@ -14,9 +14,11 @@ public:
     tran(const circuit * const c, const double & time_step, const double & stop_time);
 
     void plotnv(matlab * const m, const int & node_name) const;
+    void printnv(const int & node_name) const;
 
     double voltage(const circuit::node * const n, const int & t = -1) const {
         if (n==circuit::gnd) return 0;
+        if (node_voltage.find(n) == node_voltage.end()) return NAN;
         return helper::bidirectional_access(node_voltage.at(n), t);
     }
     double voltage(const circuit::linelem * const e, const int & t = -1) const {

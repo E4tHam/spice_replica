@@ -23,10 +23,10 @@ int main(int argc, char const *argv[]) {
     // load circuit
     string js = m.ckt_to_json(argv[1]);
     circuit a{js};
-    cout << "Finished loading circuit.";
+    cout << "Finished loading circuit." << endl;
 
     // Run circuit
-    a.run(&m);
+    auto run = a.run(&m);
 
     // Allow time to look at figures
     cout << "Press return to exit...";

@@ -1,7 +1,18 @@
 
 #include "analysis.h"
+#include <string>
 
 analysis::analysis(const circuit * const c) : c(c) {
+    for (auto n : c->nodes) {
+        itrelems.push_back(new circuit::resistor(
+            *c,
+            circuit::linelem::R,
+            ("R__n"+std::to_string(n.second->name)),
+            n.second,
+            circuit::gnd,
+            R__n
+        ));
+    }
     for (auto m : c->mosfets) {
         itrelems.push_back(new circuit::capacitor(
             *c,

@@ -12,7 +12,13 @@ tran::tran(const circuit * const c, const double & time_step, const double & sto
 
     // set voltage source indicies for MNA, and set m
     size_t m = 0;
-    for (auto e : c->linelems) {
+    for (const auto & e : c->linelems) {
+        if (e->ElemType==circuit::linelem::V) {
+            V_source_i[(circuit::V_source*)e] = m;
+            m++;
+        }
+    }
+    for (const auto & e : itrelems) {
         if (e->ElemType==circuit::linelem::V) {
             V_source_i[(circuit::V_source*)e] = m;
             m++;
@@ -28,7 +34,10 @@ tran::tran(const circuit * const c, const double & time_step, const double & sto
         storage_device_current[(circuit::storage_device*)i.first].push_back(i.second);
     }
     for (const auto & e : c->linelems) if (e->ElemType==circuit::linelem::L) {
-        storage_device_current[(circuit::storage_device*)e].push_back(((circuit::inductor*)e)->initial_current);
+        storage_device_current[(circuit::storage_device*)e].push_back(initial_dc.current(e));
+    }
+    for (const auto & e : itrelems) if (e->ElemType==circuit::linelem::L) {
+        storage_device_current[(circuit::storage_device*)e].push_back(initial_dc.current(e));
     }
     for (const auto & i : initial_dc.V_source_current)
         V_source_current[i.first].push_back(i.second);
@@ -38,6 +47,9 @@ tran::tran(const circuit * const c, const double & time_step, const double & sto
     for (const auto & e : c->linelems) {
         stamp_A(A, e);
     }
+    for (const auto & e : itrelems) {
+        stamp_A(A, e);
+    }
 
     // Run each time step
     this->stop_time = 0;
@@ -45,6 +57,9 @@ tran::tran(const circuit * const c, const double & time_step, const double & sto
         // Create z matrix
         Eigen::SparseMatrix<double> z(n+m, 1);
         for (const auto & e : c->linelems) {
+            stamp_z(z, e);
+        }
+        for (const auto & e : itrelems) {
             stamp_z(z, e);
         }
 
@@ -73,7 +88,7 @@ tran::tran(const circuit * const c, const double & time_step, const double & sto
                 A_solver.analyzePattern(A_combined);
                 A_solver.factorize(A_combined);
                 while (A_solver.info()) {
-                    cerr << "Could not factorize A." << endl << A_combined << endl << " Exiting..." << endl;
+                    cerr << "Could not factorize A in TRAN." << endl << Eigen::MatrixXd(A_combined) << endl << " Exiting..." << endl;
                     exit(1);
                 }
 
@@ -105,6 +120,9 @@ tran::tran(const circuit * const c, const double & time_step, const double & sto
         for (const auto & e : c->linelems) {
             extract_current(x, e);
         }
+        for (const auto & e : itrelems) {
+            extract_current(x, e);
+        }
 
         this->stop_time += time_step;
     }
@@ -122,6 +140,23 @@ void tran::plotnv(matlab * const m, const int & node_name) const {
     }
     m->show_plot(node_voltage.at(n), ("Node "+std::to_string(node_name)+" Voltage"), "time (s)", "Voltage", time_step, stop_time);
 }
+
+void tran::printnv(const int & node_name) const {
+    circuit::node * n = 0;
+    for (const auto i : c->nodes)
+        if (i.second->name == node_name)
+            n = i.second;
+    if (n==0) {
+        std::cerr << "Warning: Could not find node " << node_name << endl;
+        return;
+    }
+    cout << "Node " << node_name << " voltages: ";
+    for (const auto v : node_voltage.at(n)) {
+        cout << v << " ";
+    }
+    cout << endl;
+}
+
 
 void tran::stamp_A(Eigen::SparseMatrix<double> & A, const circuit::linelem * const e) const {
     switch (e->ElemType) {

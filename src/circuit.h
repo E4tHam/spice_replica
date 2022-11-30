@@ -8,6 +8,9 @@
 #include <Eigen/Eigen>
 #include <utility>
 #include "matlab.h"
+#include <memory>
+
+class analysis;
 
 class circuit {
 public:
@@ -137,7 +140,7 @@ public:
     circuit(const std::string & filename);
     ~circuit();
 
-    void run(matlab * const m) const;
+    analysis * run(matlab * const m) const;
     void print() const;
     size_t step_num;
 
@@ -153,6 +156,7 @@ private:
     std::vector<int> PLOTNV, PLOTBV, PLOTBI;
     double time_step;
     double stop_time;
+    mutable analysis * run_pointer;
 
     // friends
     friend class linelem;

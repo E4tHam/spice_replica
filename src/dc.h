@@ -10,10 +10,12 @@ class dc : public analysis {
 public:
     dc(const circuit * const c);
 
-    void plotnv(matlab * const m, const int & node_name) const { exit(1); }
+    void plotnv(matlab * const m, const int & node_name) const;
+    void printnv(const int & node_name) const;
 
     double voltage(const circuit::node * const n) const {
         if (n==circuit::gnd) return 0;
+        if (node_voltage.find(n) == node_voltage.end()) return NAN;
         return node_voltage.at(n);
     }
     double voltage(const circuit::linelem * const e) const {
@@ -23,7 +25,11 @@ public:
         }
         return voltage(e->Node1) - voltage(e->Node2);
     }
-    double voltage(const circuit::capacitor * const c) const { return c->initial_voltage; }
+    double voltage(const circuit::capacitor * const c) const {
+        if (std::isnan(c->initial_voltage))
+            return voltage(c->Node1) - voltage(c->Node2);
+        return c->initial_voltage;
+    }
     double voltage(const circuit::V_source * const v) const {
         switch (v->SOURCE_TYPE) {
             case circuit::power_source::DC: return voltage((circuit::V_dc*)v);
@@ -65,6 +71,8 @@ public:
     }
 
 private:
+    std::unordered_map< const circuit::linelem*, size_t > V_source_i;
+
     std::unordered_map< const circuit::node*, double > node_voltage;
     std::unordered_map< const circuit::capacitor*, double > capacitor_current;
     std::unordered_map< const circuit::V_source*, double > V_source_current;
@@ -75,6 +83,11 @@ private:
         static double NR_G_eq(const circuit::mosfet * const m, const double & V_GS,const double & V_DS);
         static double NR_I_eq(const circuit::mosfet * const m, const double & V_GS,const double & V_DS);
     };
+
+    void stamp_A(Eigen::SparseMatrix<double> & A, const circuit::linelem * const e) const;
+    void stamp_z(Eigen::SparseMatrix<double> & z, const circuit::linelem * const e) const;
+    void stamp_A_NR(Eigen::SparseMatrix<double> & A_NR, const circuit::mosfet * const m, const double & V_GS, const double & V_DS) const;
+    void stamp_z_NR(Eigen::SparseMatrix<double> & z_NR, const circuit::mosfet * const m, const double & V_GS, const double & V_DS) const;
 
     friend class tran;
 };
