@@ -26,9 +26,14 @@ This is a simplified open-source SPICE implementation.
 * DC
 * Transient (via Forward Euler Approximation)
 
-## Running The Code Using The Provided `main.cpp`
+## Dependencies
 
-1. In MATLAB, run the `"ckt_to_json.m"` script to parse the `".ckt"` files into `".json"` files.
-2. Build the C++ code using `make`.
-3. Run the C++ code with `./main <json file>` (ex. `./main circuits_json/nand3.json`) to create an `"out.json"` file.
-4. In MATLAB, run the `"json_plot.m"` script to plot the specified nodes in `"out.json"`.
+* Linux OS
+* MATLAB 2022b
+
+Add the following to your `"~/.bashrc"`:
+
+```bash
+export MATLABROOT=/usr/local/MATLAB/R2022b
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$MATLABROOT/extern/bin/glnxa64:$MATLABROOT/sys/os/glnxa64:$MATLABROOT/bin/glnxa64
+```

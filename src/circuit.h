@@ -137,7 +137,7 @@ public:
 
     // functions
     circuit();
-    circuit(const std::string & filename);
+    circuit(const std::string & js);
     ~circuit();
 
     analysis * run(matlab * const m) const;
