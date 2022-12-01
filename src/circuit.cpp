@@ -5,6 +5,11 @@
 #include <algorithm>
 #include "analysis.h"
 
+#ifdef MEASURE_TIME
+#include <chrono>
+using namespace std::chrono;
+#endif
+
 using namespace std;
 using namespace nlohmann;
 
@@ -293,13 +298,29 @@ analysis * circuit::run(matlab * const m) const {
         delete run_pointer;
     switch (*((analysis::TYPE_t*)analysis_type)) {
         case analysis::DC: {
+            #ifdef MEASURE_TIME
+            auto start = high_resolution_clock::now();
+            #endif
             run_pointer = new dc(this);
+            #ifdef MEASURE_TIME
+            auto stop = high_resolution_clock::now();
+            auto duration = duration_cast<microseconds>(stop - start);
+            cout << "Finished DC analysis in " << duration.count()/1000000.0 << " seconds" << endl;
+            #endif
             return run_pointer;
             } break;
         case analysis::TRAN_FE:
         case analysis::TRAN_BE:
         case analysis::TRAN_TR: {
+            #ifdef MEASURE_TIME
+            auto start = high_resolution_clock::now();
+            #endif
             run_pointer = new tran(this, time_step, stop_time);
+            #ifdef MEASURE_TIME
+            auto stop = high_resolution_clock::now();
+            auto duration = duration_cast<microseconds>(stop - start);
+            cout << "Finished transient analysis in " << duration.count()/1000000.0 << " seconds" << endl;
+            #endif
             for (const auto & n : PLOTNV) {
                 run_pointer->plotnv(m, n);
             }
