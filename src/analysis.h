@@ -22,7 +22,7 @@ public:
     // virtual void plotbi() const = 0;
 protected:
     // how accurate the simulation should be
-    static constexpr double precision = 0.000000001;
+    static constexpr double precision = 1.0e-9;
     // Resistor added to every node
     static constexpr double R__n = (0.5/precision);
     const circuit * const c;

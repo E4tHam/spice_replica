@@ -73,7 +73,6 @@ public:
     }
 
 private:
-    static constexpr double tran_precision = 0.000000001;
     std::unordered_map< const circuit::V_source*, size_t > V_source_i;
 
     std::unordered_map< const circuit::node*, std::vector<double> > node_voltage;
