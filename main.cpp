@@ -2,9 +2,7 @@
 #include "circuit.h"
 #include "matlab.h"
 #include "analysis.h"
-#include "helper.h"
 #include <iostream>
-#include <iomanip>
 #include <string>
 #include <cstdio>
 
@@ -26,7 +24,7 @@ int main(int argc, char const *argv[]) {
     cout << "Finished loading circuit." << endl;
 
     // Run circuit
-    auto run = a.run(&m);
+    analysis * run = a.run(&m);
 
     // Allow time to look at figures
     cout << "Press return to exit...";
