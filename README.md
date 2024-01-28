@@ -3,11 +3,11 @@
 
 <https://github.com/sifferman/ESspice>
 
-UCSB ECE 594BB F22 by Peng Li
+[![ESspice Demonstration](https://img.youtube.com/vi/4hBipFRTRAM/0.jpg)](https://www.youtube.com/watch?v=4hBipFRTRAM "ESspice Demonstration")
 
 ## About
 
-This is a simplified open-source SPICE implementation.
+This is a simplified open-source SPICE implementation completed for UCSB ECE 594BB F22 by Peng Li.
 
 ### Supported Devices
 
